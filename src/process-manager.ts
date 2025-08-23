@@ -2,7 +2,7 @@
 const pm2 = require('pm2');
 import * as fs from 'fs';
 import * as path from 'path';
-import * as archiver from 'archiver';
+import archiver from 'archiver';
 import { ProcessConfig, ProcessCallbacks, ProcessInfo, ProcessManagerOptions, ResultFile, ProcessResults, ZipArchiveOptions } from './types';
 
 export class ProcessManager {
@@ -566,7 +566,7 @@ export class ProcessManager {
 
     return new Promise((resolve, reject) => {
       const output = fs.createWriteStream(zipPath);
-      const archive = (archiver as any)('zip', {
+      const archive = archiver('zip', {
         zlib: { level: options.compressionLevel || 6 }
       });
 
@@ -612,7 +612,7 @@ export class ProcessManager {
 
     return new Promise((resolve, reject) => {
       const output = fs.createWriteStream(zipPath);
-      const archive = (archiver as any)('zip', {
+      const archive = archiver('zip', {
         zlib: { level: options.compressionLevel || 6 }
       });
 

@@ -39,7 +39,10 @@ jest.mock('archiver', () => {
     pointer: jest.fn(() => 1024)
   };
   
-  return jest.fn(() => mockArchive);
+  const mockArchiver = jest.fn(() => mockArchive) as any;
+  mockArchiver.create = jest.fn(() => mockArchive);
+  
+  return mockArchiver;
 });
 
 // Глобальные переменные для тестов

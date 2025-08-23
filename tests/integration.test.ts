@@ -3,6 +3,11 @@ import { ProcessManager } from '../src/process-manager';
 import { ProcessConfig, ProcessCallbacks } from '../src/types';
 
 // Мокаем модули
+jest.mock('pm2');
+jest.mock('fs');
+jest.mock('path');
+jest.mock('archiver');
+
 const mockPm2 = require('pm2');
 const mockFs = require('fs');
 const mockPath = require('path');
@@ -10,8 +15,8 @@ const mockArchiver = require('archiver');
 
 describe('ProcessManager Integration Tests', () => {
   let processManager: ProcessManager;
-  let mockArchive: any;
   let mockWriteStream: any;
+  let mockArchiveInstance: any;
 
   beforeEach(() => {
     // Сбрасываем моки
@@ -22,22 +27,21 @@ describe('ProcessManager Integration Tests', () => {
     mockFs.mkdirSync.mockReturnValue(undefined);
     mockPm2.connect.mockImplementation((callback) => callback(null));
     
-    // Мокаем архив
-    mockArchive = {
-      pipe: jest.fn().mockReturnThis(),
-      file: jest.fn().mockReturnThis(),
-      finalize: jest.fn(),
-      on: jest.fn(),
-      pointer: jest.fn(() => 1024)
-    };
-    
-    mockArchiver.mockReturnValue(mockArchive);
-    
     // Мокаем поток записи
     mockWriteStream = {
       on: jest.fn()
     };
     mockFs.createWriteStream.mockReturnValue(mockWriteStream);
+    
+    // Мокаем archiver
+    mockArchiveInstance = {
+      on: jest.fn(),
+      pipe: jest.fn(),
+      file: jest.fn(),
+      finalize: jest.fn(),
+      pointer: jest.fn().mockReturnValue(1024)
+    };
+    mockArchiver.mockReturnValue(mockArchiveInstance);
     
     processManager = new ProcessManager({
       maxProcesses: 3,
@@ -138,7 +142,7 @@ describe('ProcessManager Integration Tests', () => {
         }
       });
       
-      mockArchive.on.mockImplementation((event, callback) => {
+      mockArchiveInstance.on.mockImplementation((event, callback) => {
         if (event === 'error') {
           // Не вызываем ошибку
         }
@@ -287,7 +291,7 @@ describe('ProcessManager Integration Tests', () => {
         }
       });
       
-      mockArchive.on.mockImplementation((event, callback) => {
+      mockArchiveInstance.on.mockImplementation((event, callback) => {
         if (event === 'error') {
           // Не вызываем ошибку
         }

@@ -8,10 +8,12 @@ export class ProcessManagerAPI {
   private app: express.Application;
   private processManager: ProcessManager;
   private port: number;
+  private globalCallbacks: ProcessCallbacks;
 
-  constructor(processManager: ProcessManager, port: number = 3000) {
+  constructor(processManager: ProcessManager, port: number = 3000, globalCallbacks?: ProcessCallbacks) {
     this.processManager = processManager;
     this.port = port;
+    this.globalCallbacks = globalCallbacks || {};
     this.app = (express as any)();
     this.setupMiddleware();
     this.setupRoutes();
@@ -68,6 +70,11 @@ export class ProcessManagerAPI {
             error: 'Process name and script are required',
             timestamp: new Date().toISOString()
           });
+        }
+
+        // Применяем глобальные колбэки из конструктора API сервера
+        if (this.globalCallbacks && Object.keys(this.globalCallbacks).length > 0) {
+          config.callbacks = { ...this.globalCallbacks };
         }
 
         const pmId = await this.processManager.createProcess(config);
@@ -547,4 +554,6 @@ export class ProcessManagerAPI {
   getApp(): express.Application {
     return this.app;
   }
+
+
 }
