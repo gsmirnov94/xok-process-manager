@@ -11,7 +11,11 @@
     "test": "node test-simple.js",
     "example": "ts-node src/index.ts"
   },
-  "keywords": ["process-manager", "pm2", "typescript"],
+  "keywords": [
+    "process-manager",
+    "pm2",
+    "typescript"
+  ],
   "author": "",
   "license": "ISC",
   "description": "Process manager using PM2 with TypeScript",
@@ -21,5 +25,9 @@
     "pm2": "^5.3.0",
     "ts-node": "^10.9.0",
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/archiver": "^6.0.3",
+    "archiver": "^7.0.1"
   }
 }

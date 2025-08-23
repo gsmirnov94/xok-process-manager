@@ -1,6 +1,9 @@
 // Используем require для PM2, так как TypeScript типы не соответствуют реальному API
 const pm2 = require('pm2');
-import { ProcessConfig, ProcessCallbacks, ProcessInfo, ProcessManagerOptions } from './types';
+import * as fs from 'fs';
+import * as path from 'path';
+import archiver from 'archiver';
+import { ProcessConfig, ProcessCallbacks, ProcessInfo, ProcessManagerOptions, ResultFile, ProcessResults, ZipArchiveOptions } from './types';
 
 export class ProcessManager {
   private processes: Map<string, ProcessConfig> = new Map();
@@ -12,8 +15,27 @@ export class ProcessManager {
       maxProcesses: 10,
       autoRestart: true,
       logLevel: 'info',
+      defaultOutputDirectory: './process-results',
       ...options
     };
+    
+    // Создаем директорию для результатов, если она не существует
+    this.ensureOutputDirectory();
+  }
+
+  /**
+   * Создает директорию для результатов процессов
+   */
+  private ensureOutputDirectory(): void {
+    const outputDir = this.options.defaultOutputDirectory || './process-results';
+    if (!fs.existsSync(outputDir)) {
+      try {
+        fs.mkdirSync(outputDir, { recursive: true });
+        console.log(`Created output directory: ${outputDir}`);
+      } catch (error) {
+        console.error(`Error creating output directory ${outputDir}:`, error);
+      }
+    }
   }
 
   /**
@@ -397,6 +419,334 @@ export class ProcessManager {
    */
   getProcessNames(): string[] {
     return Array.from(this.processes.keys());
+  }
+
+  /**
+   * Получает директорию для результатов процесса
+   */
+  private getProcessOutputDirectory(processName: string): string {
+    const config = this.processes.get(processName);
+    const outputDir = config?.outputDirectoryPath || this.options.defaultOutputDirectory || './process-results';
+    return path.join(outputDir, processName);
+  }
+
+  /**
+   * Создает директорию для результатов процесса
+   */
+  private ensureProcessOutputDirectory(processName: string): void {
+    const processOutputDir = this.getProcessOutputDirectory(processName);
+    if (!fs.existsSync(processOutputDir)) {
+      try {
+        fs.mkdirSync(processOutputDir, { recursive: true });
+        console.log(`Created process output directory: ${processOutputDir}`);
+      } catch (error) {
+        console.error(`Error creating process output directory ${processOutputDir}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Сохраняет файл результата для процесса
+   */
+  async saveResultFile(processName: string, fileName: string, content: string | Buffer): Promise<string> {
+    if (!this.processes.has(processName)) {
+      throw new Error(`Process ${processName} not found`);
+    }
+
+    this.ensureProcessOutputDirectory(processName);
+    const processOutputDir = this.getProcessOutputDirectory(processName);
+    const filePath = path.join(processOutputDir, fileName);
+
+    try {
+      if (typeof content === 'string') {
+        fs.writeFileSync(filePath, content, 'utf8');
+      } else {
+        fs.writeFileSync(filePath, content);
+      }
+
+      console.log(`Result file saved: ${filePath}`);
+      return filePath;
+    } catch (error) {
+      console.error(`Error saving result file ${filePath}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получает список файлов результатов для процесса
+   */
+  async getProcessResultFiles(processName: string): Promise<ResultFile[]> {
+    if (!this.processes.has(processName)) {
+      throw new Error(`Process ${processName} not found`);
+    }
+
+    const processOutputDir = this.getProcessOutputDirectory(processName);
+    
+    if (!fs.existsSync(processOutputDir)) {
+      return [];
+    }
+
+    try {
+      const files = fs.readdirSync(processOutputDir);
+      const resultFiles: ResultFile[] = [];
+
+      for (const file of files) {
+        const filePath = path.join(processOutputDir, file);
+        const stats = fs.statSync(filePath);
+        
+        if (stats.isFile()) {
+          resultFiles.push({
+            name: file,
+            path: filePath,
+            size: stats.size,
+            modified: stats.mtime,
+            processName
+          });
+        }
+      }
+
+      // Сортируем по времени изменения (новые сначала)
+      return resultFiles.sort((a, b) => b.modified.getTime() - a.modified.getTime());
+    } catch (error) {
+      console.error(`Error reading result files for process ${processName}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Получает информацию о результатах процесса
+   */
+  async getProcessResults(processName: string): Promise<ProcessResults> {
+    const files = await this.getProcessResultFiles(processName);
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+
+    return {
+      processName,
+      files,
+      totalSize,
+      fileCount: files.length
+    };
+  }
+
+  /**
+   * Получает все результаты всех процессов
+   */
+  async getAllProcessResults(): Promise<ProcessResults[]> {
+    const results: ProcessResults[] = [];
+    
+    for (const processName of this.processes.keys()) {
+      try {
+        const processResults = await this.getProcessResults(processName);
+        results.push(processResults);
+      } catch (error) {
+        console.error(`Error getting results for process ${processName}:`, error);
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Создает zip-архив с результатами процесса
+   */
+  async createProcessResultsZip(processName: string, outputPath?: string, options: ZipArchiveOptions = {}): Promise<string> {
+    if (!this.processes.has(processName)) {
+      throw new Error(`Process ${processName} not found`);
+    }
+
+    const processResults = await this.getProcessResults(processName);
+    if (processResults.files.length === 0) {
+      throw new Error(`No result files found for process ${processName}`);
+    }
+
+    const zipPath = outputPath || path.join(
+      this.options.defaultOutputDirectory || './process-results',
+      `${processName}-results-${Date.now()}.zip`
+    );
+
+    return new Promise((resolve, reject) => {
+      const output = fs.createWriteStream(zipPath);
+      const archive = archiver('zip', {
+        zlib: { level: options.compressionLevel || 6 }
+      });
+
+      output.on('close', () => {
+        console.log(`Zip archive created: ${zipPath} (${archive.pointer()} bytes)`);
+        resolve(zipPath);
+      });
+
+      archive.on('error', (err: Error) => {
+        reject(err);
+      });
+
+      archive.pipe(output);
+
+      // Добавляем файлы в архив
+      for (const file of processResults.files) {
+        const fileName = options.includeProcessName !== false 
+          ? `${processName}/${file.name}`
+          : file.name;
+        
+        archive.file(file.path, { name: fileName });
+      }
+
+      archive.finalize();
+    });
+  }
+
+  /**
+   * Создает zip-архив со всеми результатами всех процессов
+   */
+  async createAllResultsZip(outputPath?: string, options: ZipArchiveOptions = {}): Promise<string> {
+    const allResults = await this.getAllProcessResults();
+    const hasResults = allResults.some(result => result.files.length > 0);
+    
+    if (!hasResults) {
+      throw new Error('No result files found for any process');
+    }
+
+    const zipPath = outputPath || path.join(
+      this.options.defaultOutputDirectory || './process-results',
+      `all-processes-results-${Date.now()}.zip`
+    );
+
+    return new Promise((resolve, reject) => {
+      const output = fs.createWriteStream(zipPath);
+      const archive = archiver('zip', {
+        zlib: { level: options.compressionLevel || 6 }
+      });
+
+      output.on('close', () => {
+        console.log(`All results zip archive created: ${zipPath} (${archive.pointer()} bytes)`);
+        resolve(zipPath);
+      });
+
+      archive.on('error', (err: Error) => {
+        reject(err);
+      });
+
+      archive.pipe(output);
+
+      // Добавляем файлы всех процессов в архив
+      for (const processResult of allResults) {
+        if (processResult.files.length === 0) continue;
+
+        for (const file of processResult.files) {
+          let fileName: string;
+          
+          if (options.flattenStructure) {
+            fileName = `${processResult.processName}-${file.name}`;
+          } else if (options.includeProcessName !== false) {
+            fileName = `${processResult.processName}/${file.name}`;
+          } else {
+            fileName = file.name;
+          }
+          
+          archive.file(file.path, { name: fileName });
+        }
+      }
+
+      archive.finalize();
+    });
+  }
+
+  /**
+   * Удаляет файл результата
+   */
+  async deleteResultFile(processName: string, fileName: string): Promise<void> {
+    if (!this.processes.has(processName)) {
+      throw new Error(`Process ${processName} not found`);
+    }
+
+    const processOutputDir = this.getProcessOutputDirectory(processName);
+    const filePath = path.join(processOutputDir, fileName);
+
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Result file ${fileName} not found for process ${processName}`);
+    }
+
+    try {
+      fs.unlinkSync(filePath);
+      console.log(`Result file deleted: ${filePath}`);
+    } catch (error) {
+      console.error(`Error deleting result file ${filePath}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Очищает все результаты процесса
+   */
+  async clearProcessResults(processName: string): Promise<void> {
+    if (!this.processes.has(processName)) {
+      throw new Error(`Process ${processName} not found`);
+    }
+
+    const processOutputDir = this.getProcessOutputDirectory(processName);
+    
+    if (!fs.existsSync(processOutputDir)) {
+      return;
+    }
+
+    try {
+      const files = fs.readdirSync(processOutputDir);
+      
+      for (const file of files) {
+        const filePath = path.join(processOutputDir, file);
+        const stats = fs.statSync(filePath);
+        
+        if (stats.isFile()) {
+          fs.unlinkSync(filePath);
+        }
+      }
+
+      console.log(`All result files cleared for process ${processName}`);
+    } catch (error) {
+      console.error(`Error clearing result files for process ${processName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Очищает все результаты всех процессов
+   */
+  async clearAllResults(): Promise<void> {
+    for (const processName of this.processes.keys()) {
+      try {
+        await this.clearProcessResults(processName);
+      } catch (error) {
+        console.error(`Error clearing results for process ${processName}:`, error);
+      }
+    }
+    
+    console.log('All process results cleared');
+  }
+
+  /**
+   * Получает статистику по результатам
+   */
+  async getResultsStatistics(): Promise<{
+    totalProcesses: number;
+    totalFiles: number;
+    totalSize: number;
+    processesWithResults: number;
+    averageFilesPerProcess: number;
+    averageFileSize: number;
+  }> {
+    const allResults = await this.getAllProcessResults();
+    const totalProcesses = this.processes.size;
+    const processesWithResults = allResults.filter(result => result.files.length > 0).length;
+    const totalFiles = allResults.reduce((sum, result) => sum + result.fileCount, 0);
+    const totalSize = allResults.reduce((sum, result) => sum + result.totalSize, 0);
+
+    return {
+      totalProcesses,
+      totalFiles,
+      totalSize,
+      processesWithResults,
+      averageFilesPerProcess: processesWithResults > 0 ? totalFiles / processesWithResults : 0,
+      averageFileSize: totalFiles > 0 ? totalSize / totalFiles : 0
+    };
   }
 
   /**

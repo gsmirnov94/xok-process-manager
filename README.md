@@ -10,6 +10,10 @@ Node.js TypeScript проект для управления процессами
 - Асинхронные операции с Promise API
 - Полная типизация TypeScript
 - Автоматическая инициализация соединения с PM2
+- **Управление файлами результатов процессов**
+- **Создание zip-архивов с результатами**
+- **Автоматическая организация файлов по процессам**
+- **Статистика и мониторинг результатов**
 
 ## Установка
 
@@ -102,6 +106,44 @@ await processManager.stopAllProcesses();
 await processManager.restartAllProcesses();
 ```
 
+### Работа с файлами результатов
+
+```typescript
+// Сохранение файла результата для процесса
+await processManager.saveResultFile('my-process', 'output.txt', 'Результат выполнения');
+
+// Получение списка файлов результатов процесса
+const resultFiles = await processManager.getProcessResultFiles('my-process');
+
+// Получение информации о результатах процесса
+const processResults = await processManager.getProcessResults('my-process');
+
+// Создание zip-архива с результатами процесса
+const zipPath = await processManager.createProcessResultsZip('my-process', undefined, {
+  includeProcessName: true,
+  compressionLevel: 6
+});
+
+// Создание zip-архива со всеми результатами всех процессов
+const allResultsZip = await processManager.createAllResultsZip(undefined, {
+  includeProcessName: true,
+  flattenStructure: false,
+  compressionLevel: 8
+});
+
+// Получение статистики по всем результатам
+const statistics = await processManager.getResultsStatistics();
+
+// Удаление файла результата
+await processManager.deleteResultFile('my-process', 'output.txt');
+
+// Очистка всех результатов процесса
+await processManager.clearProcessResults('my-process');
+
+// Очистка всех результатов всех процессов
+await processManager.clearAllResults();
+```
+
 ### Утилиты
 
 ```typescript
@@ -142,12 +184,23 @@ constructor(options?: ProcessManagerOptions)
 - `restartAllProcesses(): Promise<void>` - Перезапускает все процессы
 - `forceShutdown(): Promise<void>` - Принудительно завершает все процессы
 - `disconnect(): void` - Закрывает соединение с PM2
+- `saveResultFile(processName: string, fileName: string, content: string | Buffer): Promise<string>` - Сохраняет файл результата
+- `getProcessResultFiles(processName: string): Promise<ResultFile[]>` - Получает список файлов результатов процесса
+- `getProcessResults(processName: string): Promise<ProcessResults>` - Получает информацию о результатах процесса
+- `getAllProcessResults(): Promise<ProcessResults[]>` - Получает все результаты всех процессов
+- `createProcessResultsZip(processName: string, outputPath?: string, options?: ZipArchiveOptions): Promise<string>` - Создает zip-архив с результатами процесса
+- `createAllResultsZip(outputPath?: string, options?: ZipArchiveOptions): Promise<string>` - Создает zip-архив со всеми результатами
+- `deleteResultFile(processName: string, fileName: string): Promise<void>` - Удаляет файл результата
+- `clearProcessResults(processName: string): Promise<void>` - Очищает все результаты процесса
+- `clearAllResults(): Promise<void>` - Очищает все результаты всех процессов
+- `getResultsStatistics(): Promise<ResultsStatistics>` - Получает статистику по результатам
 
 #### Опции
 
 - `maxProcesses`: Максимальное количество процессов (по умолчанию: 10)
 - `autoRestart`: Автоматический перезапуск процессов (по умолчанию: true)
 - `logLevel`: Уровень логирования (по умолчанию: 'info')
+- `defaultOutputDirectory`: Директория по умолчанию для файлов результатов (по умолчанию: './process-results')
 
 ### ProcessConfig
 
@@ -164,6 +217,7 @@ interface ProcessConfig {
   exec_mode?: 'fork' | 'cluster'; // Режим выполнения
   watch?: boolean;                 // Автоматический перезапуск при изменении файлов
   callbacks?: ProcessCallbacks;    // Колбэк функции
+  outputDirectoryPath?: string;    // Директория для файлов результатов
 }
 ```
 
@@ -177,6 +231,61 @@ interface ProcessCallbacks {
   onStop?: () => void | Promise<void>;     // При остановке
   onRestart?: () => void | Promise<void>;  // При перезапуске
   onDelete?: () => void | Promise<void>;   // При удалении
+}
+```
+
+### ResultFile
+
+Информация о файле результата.
+
+```typescript
+interface ResultFile {
+  name: string;        // Имя файла
+  path: string;        // Полный путь к файлу
+  size: number;        // Размер файла в байтах
+  modified: Date;      // Дата последнего изменения
+  processName: string; // Имя процесса
+}
+```
+
+### ProcessResults
+
+Информация о результатах процесса.
+
+```typescript
+interface ProcessResults {
+  processName: string;  // Имя процесса
+  files: ResultFile[];  // Список файлов результатов
+  totalSize: number;    // Общий размер всех файлов
+  fileCount: number;    // Количество файлов
+}
+```
+
+### ZipArchiveOptions
+
+Опции для создания zip-архивов.
+
+```typescript
+interface ZipArchiveOptions {
+  includeProcessName?: boolean;  // Включать ли имя процесса в структуру архива
+  flattenStructure?: boolean;    // Сглаживать ли структуру папок
+  compressionLevel?: number;     // Уровень сжатия (1-9)
+  password?: string;             // Пароль для архива
+}
+```
+
+### ResultsStatistics
+
+Статистика по результатам всех процессов.
+
+```typescript
+interface ResultsStatistics {
+  totalProcesses: number;           // Общее количество процессов
+  totalFiles: number;               // Общее количество файлов
+  totalSize: number;                // Общий размер всех файлов
+  processesWithResults: number;     // Количество процессов с результатами
+  averageFilesPerProcess: number;   // Среднее количество файлов на процесс
+  averageFileSize: number;          // Средний размер файла
 }
 ```
 

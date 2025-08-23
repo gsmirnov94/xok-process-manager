@@ -21,6 +21,7 @@ export interface ProcessConfig {
   log_file?: string;
   time?: boolean;
   callbacks?: ProcessCallbacks;
+  outputDirectoryPath?: string;
 }
 
 export interface ProcessInfo {
@@ -38,4 +39,27 @@ export interface ProcessManagerOptions {
   maxProcesses?: number;
   autoRestart?: boolean;
   logLevel?: 'error' | 'warn' | 'info' | 'debug';
+  defaultOutputDirectory?: string;
+}
+
+export interface ResultFile {
+  name: string;
+  path: string;
+  size: number;
+  modified: Date;
+  processName: string;
+}
+
+export interface ProcessResults {
+  processName: string;
+  files: ResultFile[];
+  totalSize: number;
+  fileCount: number;
+}
+
+export interface ZipArchiveOptions {
+  includeProcessName?: boolean;
+  flattenStructure?: boolean;
+  compressionLevel?: number;
+  password?: string;
 }
