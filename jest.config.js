@@ -31,5 +31,6 @@ module.exports = {
   verbose: false,
   maxWorkers: '50%',
   bail: 1,
-  forceExit: true
+  forceExit: true,
+  detectOpenHandles: true
 };
