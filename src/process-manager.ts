@@ -426,7 +426,7 @@ export class ProcessManager {
    */
   private getProcessOutputDirectory(processName: string): string {
     const config = this.processes.get(processName);
-    const outputDir = config?.outputDirectoryPath || this.options.defaultOutputDirectory || './process-results';
+    const outputDir = config?.outputDirectory || this.options.defaultOutputDirectory || './process-results';
     return path.join(outputDir, processName);
   }
 

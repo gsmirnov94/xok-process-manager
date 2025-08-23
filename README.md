@@ -217,7 +217,7 @@ interface ProcessConfig {
   exec_mode?: 'fork' | 'cluster'; // Режим выполнения
   watch?: boolean;                 // Автоматический перезапуск при изменении файлов
   callbacks?: ProcessCallbacks;    // Колбэк функции
-  outputDirectoryPath?: string;    // Директория для файлов результатов
+  outputDirectory?: string;        // Директория для файлов результатов
 }
 ```
 

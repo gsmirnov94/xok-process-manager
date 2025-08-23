@@ -21,7 +21,7 @@ export interface ProcessConfig {
   log_file?: string;
   time?: boolean;
   callbacks?: ProcessCallbacks;
-  outputDirectoryPath?: string;
+  outputDirectory?: string;
 }
 
 export interface ProcessInfo {

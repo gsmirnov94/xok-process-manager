@@ -20,7 +20,7 @@ async function fileResultsExample() {
     const pmId = await processManager.createProcess({
       name: processName,
       script: 'example-script.js',
-      outputDirectoryPath: './example-results/test-process'
+      outputDirectory: './example-results/test-process'
     });
 
     console.log(`✓ Процесс "${processName}" создан с PM2 ID: ${pmId}\n`);
@@ -68,7 +68,7 @@ async function fileResultsExample() {
     await processManager.createProcess({
       name: processName2,
       script: 'another-script.js',
-      outputDirectoryPath: './example-results/another-process'
+      outputDirectory: './example-results/another-process'
     });
 
     console.log(`✓ Процесс "${processName2}" создан\n`);
