@@ -1,4 +1,6 @@
 export { ProcessManager } from './process-manager';
+export { ProcessManagerAPI } from './api-server';
+export { main as startAPIServer } from './server';
 export * from './types';
 
 // Пример использования
