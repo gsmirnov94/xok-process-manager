@@ -664,6 +664,200 @@ describe('ProcessManager', () => {
     });
   });
 
+  describe('Auto Restart', () => {
+    beforeEach(async () => {
+      await processManager.init();
+    });
+
+    it('should enable auto restart when autoRestart is true', () => {
+      const managerWithAutoRestart = new ProcessManager({ autoRestart: true });
+      expect(managerWithAutoRestart['options'].autoRestart).toBe(true);
+    });
+
+    it('should disable auto restart when autoRestart is false', () => {
+      const managerWithoutAutoRestart = new ProcessManager({ autoRestart: false });
+      expect(managerWithoutAutoRestart['options'].autoRestart).toBe(false);
+    });
+
+    it('should use default auto restart value (true) when not specified', () => {
+      const managerWithDefaults = new ProcessManager();
+      expect(managerWithDefaults['options'].autoRestart).toBe(true);
+    });
+
+    it('should handle process restart when auto restart is enabled', async () => {
+      const processName = 'auto-restart-process';
+      const mockConfig: ProcessConfig = {
+        name: processName,
+        script: './test.js',
+        callbacks: {
+          onRestart: jest.fn().mockReturnValue(undefined) as () => void
+        }
+      };
+
+      (processManager as any).processes.set(processName, mockConfig);
+      mockPm2.restart.mockImplementation((name, callback) => callback(null));
+
+      await processManager.restartProcess(processName);
+
+      expect(mockPm2.restart).toHaveBeenCalledWith(processName, expect.any(Function));
+      expect(mockConfig.callbacks?.onRestart).toHaveBeenCalled();
+    });
+
+    it('should handle process restart when auto restart is disabled', async () => {
+      const managerWithoutAutoRestart = new ProcessManager({ autoRestart: false });
+      await managerWithoutAutoRestart.init();
+
+      const processName = 'no-auto-restart-process';
+      const mockConfig: ProcessConfig = {
+        name: processName,
+        script: './test.js'
+      };
+
+      (managerWithoutAutoRestart as any).processes.set(processName, mockConfig);
+      mockPm2.restart.mockImplementation((name, callback) => callback(null));
+
+      await managerWithoutAutoRestart.restartProcess(processName);
+
+      expect(mockPm2.restart).toHaveBeenCalledWith(processName, expect.any(Function));
+    });
+
+    it('should handle auto restart configuration in process config', async () => {
+      const processName = 'custom-auto-restart-process';
+      const mockConfig: ProcessConfig = {
+        name: processName,
+        script: './test.js',
+        // PM2 автоматически обрабатывает авторестарт через свои настройки
+        maxMemoryRestart: '100M',
+        watch: true,
+        ignoreWatch: ['node_modules']
+      };
+
+      (processManager as any).processes.set(processName, mockConfig);
+      mockPm2.start.mockImplementation((config, callback) => callback(null, [{ pm2_env: { pm_id: 123 } }]));
+
+      const processId = await processManager.createProcess(mockConfig);
+
+      expect(processId).toBe(123);
+      expect(mockPm2.start).toHaveBeenCalled();
+      
+      // Проверяем, что конфигурация авторестарта передается в PM2
+      const pm2Config = mockPm2.start.mock.calls[0][0];
+      expect(pm2Config.maxMemoryRestart).toBe('100M');
+      expect(pm2Config.watch).toBe(true);
+      expect(pm2Config.ignoreWatch).toEqual(['node_modules']);
+    });
+
+    it('should handle auto restart with custom restart strategy', async () => {
+      const processName = 'strategy-restart-process';
+      const mockConfig: ProcessConfig = {
+        name: processName,
+        script: './test.js',
+        // Комбинированные настройки авторестарта
+        maxMemoryRestart: '200M',
+        watch: true,
+        ignoreWatch: ['logs', 'temp'],
+        instances: 2,
+        execMode: 'cluster'
+      };
+
+      (processManager as any).processes.set(processName, mockConfig);
+      mockPm2.start.mockImplementation((config, callback) => callback(null, [{ pm2_env: { pm_id: 999 } }]));
+
+      const processId = await processManager.createProcess(mockConfig);
+
+      expect(processId).toBe(999);
+      
+      // Проверяем, что все настройки авторестарта корректно передаются в PM2
+      const pm2Config = mockPm2.start.mock.calls[0][0];
+      expect(pm2Config.maxMemoryRestart).toBe('200M');
+      expect(pm2Config.watch).toBe(true);
+      expect(pm2Config.ignoreWatch).toEqual(['logs', 'temp']);
+      expect(pm2Config.instances).toBe(2);
+      expect(pm2Config.execMode).toBe('cluster');
+    });
+
+    it('should handle auto restart configuration override in defaultProcessConfig', async () => {
+      const managerWithDefaultRestart = new ProcessManager({
+        autoRestart: true,
+        defaultProcessConfig: {
+          maxMemoryRestart: '150M',
+          watch: true,
+          ignoreWatch: ['node_modules'],
+          instances: 2
+        }
+      });
+
+      await managerWithDefaultRestart.init();
+
+      const processName = 'default-restart-process';
+      const mockConfig: ProcessConfig = {
+        name: processName,
+        script: './test.js'
+        // Используем настройки по умолчанию
+      };
+
+      (managerWithDefaultRestart as any).processes.set(processName, mockConfig);
+      mockPm2.start.mockImplementation((config, callback) => callback(null, [{ pm2_env: { pm_id: 111 } }]));
+
+      const processId = await managerWithDefaultRestart.createProcess(mockConfig);
+
+      expect(processId).toBe(111);
+      
+      // Проверяем, что настройки авторестарта по умолчанию применяются
+      const pm2Config = mockPm2.start.mock.calls[0][0];
+      expect(pm2Config.maxMemoryRestart).toBe('150M');
+      expect(pm2Config.watch).toBe(true);
+      expect(pm2Config.ignoreWatch).toEqual(['node_modules']);
+      expect(pm2Config.instances).toBe(2);
+
+      // Очищаем ресурсы
+      (managerWithDefaultRestart as any).processes.clear();
+      managerWithDefaultRestart.disconnect();
+    }, 15000);
+
+    it('should handle auto restart configuration merge between default and process config', async () => {
+      const managerWithDefaultRestart = new ProcessManager({
+        autoRestart: true,
+        defaultProcessConfig: {
+          maxMemoryRestart: '100M',
+          watch: true,
+          ignoreWatch: ['node_modules'],
+          instances: 1
+        }
+      });
+
+      await managerWithDefaultRestart.init();
+
+      const processName = 'merged-restart-process';
+      const mockConfig: ProcessConfig = {
+        name: processName,
+        script: './test.js',
+        // Переопределяем некоторые настройки
+        maxMemoryRestart: '300M',
+        instances: 3
+        // watch и ignoreWatch остаются по умолчанию
+      };
+
+      (managerWithDefaultRestart as any).processes.set(processName, mockConfig);
+      mockPm2.start.mockImplementation((config, callback) => callback(null, [{ pm2_env: { pm_id: 222 } }]));
+
+      const processId = await managerWithDefaultRestart.createProcess(mockConfig);
+
+      expect(processId).toBe(222);
+      
+      // Проверяем, что настройки корректно объединяются
+      const pm2Config = mockPm2.start.mock.calls[0][0];
+      expect(pm2Config.maxMemoryRestart).toBe('300M'); // Переопределено
+      expect(pm2Config.watch).toBe(true); // По умолчанию
+      expect(pm2Config.ignoreWatch).toEqual(['node_modules']); // По умолчанию
+      expect(pm2Config.instances).toBe(3); // Переопределено
+
+      // Очищаем ресурсы
+      (managerWithDefaultRestart as any).processes.clear();
+      managerWithDefaultRestart.disconnect();
+    }, 15000);
+  });
+
   describe('defaultProcessConfig', () => {
     it('should merge default config with process config', async () => {
       const processManager = new ProcessManager({
