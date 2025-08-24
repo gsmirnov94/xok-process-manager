@@ -1,6 +1,6 @@
 {
   "name": "xok-process-manager",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Process manager using PM2 with TypeScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -45,6 +45,9 @@
   "homepage": "https://github.com/gsmirnov94/xok-process-manager#readme",
   "engines": {
     "node": ">=16.0.0"
+  },
+  "peerDependencies": {
+    "pm2": ">=5.0.0"
   },
 
   "dependencies": {
