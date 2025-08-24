@@ -83,7 +83,7 @@ export class ProcessManager {
   /**
    * Создает новый процесс с указанными колбэками
    */
-  async createProcess(config: ProcessConfig): Promise<number> {
+  async createProcess(config: ProcessConfig, options?: { autoRestart?: boolean }): Promise<number> {
     let processName: string = config.name;
     
     try {
@@ -113,21 +113,29 @@ export class ProcessManager {
 
       processName = mergedConfig.name;
 
-      // Создаем процесс через PM2
-      return new Promise((resolve, reject) => {
-        const pm2Config: any = {
-          name: mergedConfig.name,
-          script: mergedConfig.script,
-          args: mergedConfig.args || [],
-          cwd: mergedConfig.cwd || process.cwd(),
-          env: mergedConfig.env || {},
-          instances: mergedConfig.instances || 1,
-          execMode: mergedConfig.execMode || 'fork',
-          watch: mergedConfig.watch || false,
-          ignoreWatch: mergedConfig.ignoreWatch || [],
-          maxMemoryRestart: mergedConfig.maxMemoryRestart,
-          time: mergedConfig.time || false
-        };
+              // Создаем процесс через PM2
+        return new Promise((resolve, reject) => {
+          const pm2Config: any = {
+            name: mergedConfig.name,
+            script: mergedConfig.script,
+            args: mergedConfig.args || [],
+            cwd: mergedConfig.cwd || process.cwd(),
+            env: mergedConfig.env || {},
+            instances: mergedConfig.instances || 1,
+            execMode: mergedConfig.execMode || 'fork',
+            watch: mergedConfig.watch || false,
+            ignoreWatch: mergedConfig.ignoreWatch || [],
+            maxMemoryRestart: mergedConfig.maxMemoryRestart,
+            time: mergedConfig.time || false
+          };
+
+          // Handle autoRestart option
+          const autoRestart = options?.autoRestart !== undefined ? options.autoRestart : this.options.autoRestart;
+          if (!autoRestart) {
+            // Disable PM2 restart behavior
+            pm2Config.autorestart = false;
+            pm2Config.max_restarts = 0;
+          }
 
         // Добавляем опциональные поля только если они определены
         if (mergedConfig.errorFile) pm2Config.error_file = mergedConfig.errorFile;

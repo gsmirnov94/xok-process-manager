@@ -162,7 +162,10 @@ export class ProcessManagerAPI {
           config.callbacks = { ...this.globalCallbacks };
         }
 
-        const pmId = await this.processManager.createProcess(config);
+        // Extract autoRestart option from request body and pass it to process manager
+        const autoRestart = req.body.autoRestart !== undefined ? req.body.autoRestart : true;
+
+        const pmId = await this.processManager.createProcess(config, { autoRestart });
         res.json({
           success: true,
           message: `Process ${config.name} created successfully`,
