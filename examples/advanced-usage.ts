@@ -18,10 +18,10 @@ async function advancedExample() {
       {
         name: 'web-server',
         script: './examples/web-server.js',
+        execMode: 'cluster',
         instances: 2,
-        exec_mode: 'cluster',
         env: { NODE_ENV: 'production', PORT: '3000' },
-        max_memory_restart: '100M',
+        maxMemoryRestart: '100M',
         watch: true,
         callbacks: {
           onStart: () => console.log('🌐 Web server started'),
@@ -33,10 +33,10 @@ async function advancedExample() {
       {
         name: 'worker',
         script: './examples/worker.js',
-        instances: 3,
-        exec_mode: 'cluster',
+        execMode: 'cluster',
+        instances: 8,
         env: { NODE_ENV: 'production', WORKER_TYPE: 'data-processor' },
-        max_memory_restart: '200M',
+        maxMemoryRestart: '200M',
         callbacks: {
           onStart: () => console.log('⚙️  Worker started'),
           onStop: () => console.log('⚙️  Worker stopped'),
@@ -47,8 +47,8 @@ async function advancedExample() {
       {
         name: 'monitor',
         script: './examples/monitor.js',
+        execMode: 'fork',
         instances: 1,
-        exec_mode: 'fork',
         env: { NODE_ENV: 'production', MONITOR_INTERVAL: '5000' },
         callbacks: {
           onStart: () => console.log('📊 Monitor started'),

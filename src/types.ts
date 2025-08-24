@@ -12,13 +12,13 @@ export interface ProcessConfig {
   cwd?: string;
   env?: Record<string, string>;
   instances?: number;
-  exec_mode?: 'fork' | 'cluster';
+  execMode?: 'fork' | 'cluster';
   watch?: boolean;
-  ignore_watch?: string[];
-  max_memory_restart?: string;
-  error_file?: string;
-  out_file?: string;
-  log_file?: string;
+  ignoreWatch?: string[];
+  maxMemoryRestart?: string;
+  errorFile?: string;
+  outFile?: string;
+  logFile?: string;
   time?: boolean;
   callbacks?: ProcessCallbacks;
   outputDirectory?: string;
@@ -32,7 +32,7 @@ export interface ProcessInfo {
   memory: number;
   uptime: number;
   restarts: number;
-  pm_id: number;
+  pmId: number;
 }
 
 export interface ProcessManagerOptions {

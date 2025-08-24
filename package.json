@@ -1,6 +1,6 @@
 {
   "name": "xok-process-manager",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Process manager using PM2 with TypeScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

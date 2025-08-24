@@ -88,7 +88,7 @@ describe('ProcessManager', () => {
       name: 'test-process',
       script: './test.js',
       instances: 1,
-      exec_mode: 'fork'
+      execMode: 'fork'
     };
 
     beforeEach(async () => {
@@ -153,13 +153,13 @@ describe('ProcessManager', () => {
         cwd: '/custom/path',
         env: { NODE_ENV: 'production' },
         instances: 4,
-        exec_mode: 'cluster',
+        execMode: 'cluster',
         watch: true,
-        ignore_watch: ['node_modules'],
-        max_memory_restart: '1G',
-        error_file: './error.log',
-        out_file: './output.log',
-        log_file: './combined.log',
+        ignoreWatch: ['node_modules'],
+        maxMemoryRestart: '1G',
+        errorFile: './error.log',
+        outFile: './output.log',
+        logFile: './combined.log',
         time: true
       };
       
@@ -172,11 +172,12 @@ describe('ProcessManager', () => {
       expect(pm2Config.cwd).toBe('/custom/path');
       expect(pm2Config.env).toEqual({ NODE_ENV: 'production' });
       expect(pm2Config.instances).toBe(4);
-      expect(pm2Config.exec_mode).toBe('cluster');
-      expect(pm2Config.watch).toBe(true);
-      expect(pm2Config.ignore_watch).toEqual(['node_modules']);
-      expect(pm2Config.max_memory_restart).toBe('1G');
-      expect(pm2Config.time).toBe(true);
+      expect(pm2Config.execMode).toBe('cluster');
+      expect(pm2Config.ignoreWatch).toEqual(['node_modules']);
+      expect(pm2Config.maxMemoryRestart).toBe('1G');
+      expect(pm2Config.error_file).toBe('./error.log');
+      expect(pm2Config.out_file).toBe('./output.log');
+      expect(pm2Config.log_file).toBe('./combined.log');
     });
   });
 
@@ -390,7 +391,7 @@ describe('ProcessManager', () => {
         memory: 1024000,
         uptime: 1000,
         restarts: 2,
-        pm_id: 1
+        pmId: 1
       });
     });
 
@@ -668,7 +669,7 @@ describe('ProcessManager', () => {
       const processManager = new ProcessManager({
         defaultProcessConfig: {
           instances: 2,
-          exec_mode: 'cluster',
+          execMode: 'cluster',
           env: { NODE_ENV: 'production' },
           callbacks: {
             onStart: () => console.log('Default onStart')
@@ -689,7 +690,7 @@ describe('ProcessManager', () => {
       // Проверяем, что конфигурация объединена
       const savedConfig = (processManager as any).processes.get('test-process');
       expect(savedConfig.instances).toBe(2);
-      expect(savedConfig.exec_mode).toBe('cluster');
+      expect(savedConfig.execMode).toBe('cluster');
       expect(savedConfig.env.NODE_ENV).toBe('production');
       expect(savedConfig.env.CUSTOM_VAR).toBe('test');
       expect(savedConfig.callbacks?.onStart).toBeDefined();
@@ -702,7 +703,7 @@ describe('ProcessManager', () => {
       const processManager = new ProcessManager({
         defaultProcessConfig: {
           instances: 2,
-          exec_mode: 'cluster'
+          execMode: 'cluster'
         }
       });
 
@@ -712,7 +713,7 @@ describe('ProcessManager', () => {
         name: 'test-process-override',
         script: './test.js',
         instances: 1,
-        exec_mode: 'fork'
+        execMode: 'fork'
       });
 
       expect(processId).toBeDefined();
@@ -720,7 +721,7 @@ describe('ProcessManager', () => {
       // Проверяем, что переданная конфигурация переопределяет значения по умолчанию
       const savedConfig = (processManager as any).processes.get('test-process-override');
       expect(savedConfig.instances).toBe(1);
-      expect(savedConfig.exec_mode).toBe('fork');
+      expect(savedConfig.execMode).toBe('fork');
 
       await processManager.deleteProcess('test-process-override');
       processManager.disconnect();

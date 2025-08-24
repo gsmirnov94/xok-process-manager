@@ -122,17 +122,17 @@ export class ProcessManager {
           cwd: mergedConfig.cwd || process.cwd(),
           env: mergedConfig.env || {},
           instances: mergedConfig.instances || 1,
-          exec_mode: mergedConfig.exec_mode || 'fork',
+          execMode: mergedConfig.execMode || 'fork',
           watch: mergedConfig.watch || false,
-          ignore_watch: mergedConfig.ignore_watch || [],
-          max_memory_restart: mergedConfig.max_memory_restart,
+          ignoreWatch: mergedConfig.ignoreWatch || [],
+          maxMemoryRestart: mergedConfig.maxMemoryRestart,
           time: mergedConfig.time || false
         };
 
         // Добавляем опциональные поля только если они определены
-        if (mergedConfig.error_file) pm2Config.error_file = mergedConfig.error_file;
-        if (mergedConfig.out_file) pm2Config.out_file = mergedConfig.out_file;
-        if (mergedConfig.log_file) pm2Config.log_file = mergedConfig.log_file;
+        if (mergedConfig.errorFile) pm2Config.error_file = mergedConfig.errorFile;
+        if (mergedConfig.outFile) pm2Config.out_file = mergedConfig.outFile;
+        if (mergedConfig.logFile) pm2Config.log_file = mergedConfig.logFile;
 
         pm2.start(pm2Config, (err: any, proc: any) => {
           if (err) {
@@ -316,7 +316,7 @@ export class ProcessManager {
           memory: proc.monit?.memory || 0,
           uptime: proc.pm2_env?.pm_uptime || 0,
           restarts: proc.pm2_env?.restart_time || 0,
-          pm_id: (proc as any).pm2_env?.pm_id || 0
+          pmId: (proc as any).pm2_env?.pm_id || 0
         });
       });
     });
@@ -343,7 +343,7 @@ export class ProcessManager {
           memory: proc.monit?.memory || 0,
           uptime: proc.pm2_env?.pm_uptime || 0,
           restarts: proc.pm2_env?.restart_time || 0,
-          pm_id: (proc as any).pm2_env?.pm_id || 0
+          pmId: (proc as any).pm2_env?.pm_id || 0
         }));
 
         resolve(processList);

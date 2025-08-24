@@ -65,7 +65,7 @@ describe('ProcessManager Integration Tests', () => {
         name: processName,
         script: './test.js',
         instances: 1,
-        exec_mode: 'fork',
+        execMode: 'fork',
         callbacks,
         outputDirectory: './custom-output'
       };
@@ -169,21 +169,21 @@ describe('ProcessManager Integration Tests', () => {
           name: 'web-server',
           script: './web-server.js',
           instances: 2,
-          exec_mode: 'cluster',
+          execMode: 'cluster',
           env: { NODE_ENV: 'production' }
         },
         {
           name: 'worker',
           script: './worker.js',
           instances: 1,
-          exec_mode: 'fork',
+          execMode: 'fork',
           env: { WORKER_MODE: 'true' }
         },
         {
           name: 'monitor',
           script: './monitor.js',
           instances: 1,
-          exec_mode: 'fork',
+          execMode: 'fork',
           watch: true
         }
       ];
@@ -407,7 +407,7 @@ describe('ProcessManager Integration Tests', () => {
           name: `process-${i}`,
           script: `./script-${i}.js`,
           instances: 1,
-          exec_mode: 'fork'
+          execMode: 'fork'
         });
       }
 

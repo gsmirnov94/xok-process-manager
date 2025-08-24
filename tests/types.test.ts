@@ -71,13 +71,13 @@ describe('Type Definitions', () => {
         cwd: '/custom/path',
         env: { NODE_ENV: 'production', DEBUG: 'true' },
         instances: 4,
-        exec_mode: 'cluster',
+        execMode: 'cluster',
         watch: true,
-        ignore_watch: ['node_modules', 'logs'],
-        max_memory_restart: '2G',
-        error_file: './error.log',
-        out_file: './output.log',
-        log_file: './combined.log',
+        ignoreWatch: ['node_modules', 'logs'],
+        maxMemoryRestart: '2G',
+        errorFile: './error.log',
+        outFile: './output.log',
+        logFile: './combined.log',
         time: true,
         callbacks: {
           onStart: () => console.log('Started'),
@@ -90,33 +90,33 @@ describe('Type Definitions', () => {
       expect(config.cwd).toBe('/custom/path');
       expect(config.env).toEqual({ NODE_ENV: 'production', DEBUG: 'true' });
       expect(config.instances).toBe(4);
-      expect(config.exec_mode).toBe('cluster');
+      expect(config.execMode).toBe('cluster');
       expect(config.watch).toBe(true);
-      expect(config.ignore_watch).toEqual(['node_modules', 'logs']);
-      expect(config.max_memory_restart).toBe('2G');
-      expect(config.error_file).toBe('./error.log');
-      expect(config.out_file).toBe('./output.log');
-      expect(config.log_file).toBe('./combined.log');
+      expect(config.ignoreWatch).toEqual(['node_modules', 'logs']);
+      expect(config.maxMemoryRestart).toBe('2G');
+      expect(config.errorFile).toBe('./error.log');
+      expect(config.outFile).toBe('./output.log');
+      expect(config.logFile).toBe('./combined.log');
       expect(config.time).toBe(true);
       expect(config.callbacks).toBeDefined();
       expect(config.outputDirectory).toBe('./custom-output');
     });
 
-    it('should allow exec_mode to be fork or cluster', () => {
+    it('should allow execMode to be fork or cluster', () => {
       const forkConfig: ProcessConfig = {
         name: 'fork-process',
         script: './test.js',
-        exec_mode: 'fork'
+        execMode: 'fork'
       };
       
       const clusterConfig: ProcessConfig = {
         name: 'cluster-process',
         script: './test.js',
-        exec_mode: 'cluster'
+        execMode: 'cluster'
       };
       
-      expect(forkConfig.exec_mode).toBe('fork');
-      expect(clusterConfig.exec_mode).toBe('cluster');
+      expect(forkConfig.execMode).toBe('fork');
+      expect(clusterConfig.execMode).toBe('cluster');
     });
   });
 
@@ -130,7 +130,7 @@ describe('Type Definitions', () => {
         memory: 1024000,
         uptime: 3600000,
         restarts: 2,
-        pm_id: 1
+        pmId: 1
       };
       
       expect(typeof processInfo.id).toBe('number');
@@ -140,7 +140,7 @@ describe('Type Definitions', () => {
       expect(typeof processInfo.memory).toBe('number');
       expect(typeof processInfo.uptime).toBe('number');
       expect(typeof processInfo.restarts).toBe('number');
-      expect(typeof processInfo.pm_id).toBe('number');
+      expect(typeof processInfo.pmId).toBe('number');
     });
 
     it('should allow various status values', () => {
@@ -155,7 +155,7 @@ describe('Type Definitions', () => {
           memory: 0,
           uptime: 0,
           restarts: 0,
-          pm_id: 1
+          pmId: 1
         };
         
         expect(processInfo.status).toBe(status);
@@ -459,13 +459,13 @@ describe('Type Definitions', () => {
         cwd: '',
         env: {},
         instances: 0,
-        exec_mode: 'fork',
+        execMode: 'fork',
         watch: false,
-        ignore_watch: [],
-        max_memory_restart: '',
-        error_file: '',
-        out_file: '',
-        log_file: '',
+        ignoreWatch: [],
+        maxMemoryRestart: '',
+        errorFile: '',
+        outFile: '',
+        logFile: '',
         time: false
       };
       
@@ -476,7 +476,7 @@ describe('Type Definitions', () => {
       expect(config.env).toEqual({});
       expect(config.instances).toBe(0);
       expect(config.watch).toBe(false);
-      expect(config.ignore_watch).toEqual([]);
+      expect(config.ignoreWatch).toEqual([]);
       expect(config.time).toBe(false);
     });
   });

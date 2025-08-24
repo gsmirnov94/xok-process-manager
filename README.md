@@ -81,7 +81,7 @@ const processManager = new ProcessManager({
   logLevel: 'info',
   defaultProcessConfig: {
     instances: 2,
-    exec_mode: 'cluster',
+    execMode: 'cluster',
     watch: true,
     env: {
       NODE_ENV: 'production'
@@ -109,7 +109,7 @@ const processId = await processManager.createProcess({
   name: 'my-process',
   script: './script.js',
   instances: 1,
-  exec_mode: 'fork',
+  execMode: 'fork',
   callbacks: {
     onStart: () => console.log('Process started'),
     onStop: () => console.log('Process stopped'),
@@ -298,7 +298,7 @@ const processManager = new ProcessManager({
   logLevel: 'info',
   defaultProcessConfig: {
     instances: 2,
-    exec_mode: 'cluster',
+    execMode: 'cluster',
     watch: true,
     env: {
       NODE_ENV: 'production',
@@ -559,7 +559,7 @@ interface ProcessConfig {
   cwd?: string;                    // Рабочая директория
   env?: Record<string, string>;    // Переменные окружения
   instances?: number;              // Количество экземпляров
-  exec_mode?: 'fork' | 'cluster'; // Режим выполнения
+  execMode?: 'fork' | 'cluster'; // Режим выполнения
   watch?: boolean;                 // Автоматический перезапуск при изменении файлов
   callbacks?: ProcessCallbacks;    // Колбэк функции
   outputDirectory?: string;        // Директория для файлов результатов

@@ -24,7 +24,7 @@ async function example() {
       name: 'example-process',
       script: './example-script.js',
       instances: 1,
-      exec_mode: 'fork',
+      execMode: 'fork',
       callbacks: {
         onStart: () => {
           console.log('Process started - executing onStart callback');
