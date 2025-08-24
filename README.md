@@ -205,6 +205,239 @@ console.log('Теперь все создаваемые процессы буд�
 - `DELETE /processes/:name` - удаление процесса
 - И многие другие...
 
+### Примеры использования HTTP API
+
+#### Создание процесса через API
+
+```bash
+# Создание процесса с минимальной конфигурацией
+curl -X POST http://localhost:3000/processes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "web-server",
+    "script": "./server.js"
+  }'
+
+# Создание процесса с дополнительными параметрами
+curl -X POST http://localhost:3000/processes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "api-service",
+    "script": "./api.js",
+    "instances": 4,
+    "env": {
+      "PORT": "8080",
+      "NODE_ENV": "production"
+    }
+  }'
+```
+
+#### Управление процессами через API
+
+```bash
+# Получение списка всех процессов
+curl http://localhost:3000/processes
+
+# Получение информации о конкретном процессе
+curl http://localhost:3000/processes/web-server
+
+# Запуск процесса
+curl -X POST http://localhost:3000/processes/web-server/start
+
+# Остановка процесса
+curl -X POST http://localhost:3000/processes/web-server/stop
+
+# Перезапуск процесса
+curl -X POST http://localhost:3000/processes/web-server/restart
+
+# Удаление процесса
+curl -X DELETE http://localhost:3000/processes/web-server
+```
+
+#### Массовые операции через API
+
+```bash
+# Остановка всех процессов
+curl -X POST http://localhost:3000/processes/stop-all
+
+# Перезапуск всех процессов
+curl -X POST http://localhost:3000/processes/restart-all
+
+# Получение статистики всех процессов
+curl http://localhost:3000/processes/stats
+```
+
+#### Работа с результатами через API
+
+```bash
+# Получение файлов результатов процесса
+curl http://localhost:3000/processes/web-server/results
+
+# Создание zip-архива с результатами
+curl -X POST http://localhost:3000/processes/web-server/results/zip
+
+# Создание zip-архива со всеми результатами
+curl -X POST http://localhost:3000/processes/results/zip-all
+
+# Получение статистики по результатам
+curl http://localhost:3000/processes/results/stats
+```
+
+### Полный пример с дефолтным конфигом и API
+
+```typescript
+import { ProcessManagerAPI } from 'xok-process-manager';
+import { ProcessManager } from 'xok-process-manager';
+
+// Создаем ProcessManager с дефолтным конфигом
+const processManager = new ProcessManager({
+  maxProcesses: 10,
+  autoRestart: true,
+  logLevel: 'info',
+  defaultProcessConfig: {
+    instances: 2,
+    exec_mode: 'cluster',
+    watch: true,
+    env: {
+      NODE_ENV: 'production',
+      LOG_LEVEL: 'info'
+    },
+    callbacks: {
+      onStart: async () => {
+        console.log('🚀 Процесс запущен с дефолтными настройками');
+        // Здесь можно добавить логику мониторинга, метрики и т.д.
+      },
+      onStop: async () => {
+        console.log('⏹️ Процесс остановлен');
+      },
+      onRestart: async () => {
+        console.log('🔄 Процесс перезапущен');
+      },
+      onDelete: async () => {
+        console.log('🗑️ Процесс удален');
+      }
+    }
+  }
+});
+
+// Создаем API сервер
+const apiServer = new ProcessManagerAPI(processManager, 3000);
+
+// Запускаем API сервер
+await apiServer.start();
+
+console.log('🌐 API сервер запущен на http://localhost:3000');
+console.log('📋 Все процессы будут автоматически использовать дефолтный конфиг');
+console.log('🔗 Документация API: http://localhost:3000/docs');
+```
+
+### JavaScript пример для браузера
+
+```javascript
+// Создание процесса через fetch API
+async function createProcess(name, script, options = {}) {
+  const response = await fetch('http://localhost:3000/processes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name,
+      script,
+      ...options
+    })
+  });
+  
+  return await response.json();
+}
+
+// Использование
+createProcess('my-app', './app.js', {
+  instances: 3,
+  env: { PORT: '3001' }
+}).then(result => {
+  console.log('Процесс создан:', result);
+}).catch(error => {
+  console.error('Ошибка:', error);
+});
+
+// Получение списка процессов
+async function getProcesses() {
+  const response = await fetch('http://localhost:3000/processes');
+  return await response.json();
+}
+
+// Управление процессом
+async function controlProcess(name, action) {
+  const response = await fetch(`http://localhost:3000/processes/${name}/${action}`, {
+    method: 'POST'
+  });
+  return await response.json();
+}
+
+// Примеры использования
+getProcesses().then(processes => {
+  console.log('Активные процессы:', processes);
+});
+
+controlProcess('my-app', 'restart').then(result => {
+  console.log('Процесс перезапущен:', result);
+});
+```
+
+### Python пример
+
+```python
+import requests
+import json
+
+# Базовый URL API
+BASE_URL = "http://localhost:3000"
+
+def create_process(name, script, **options):
+    """Создание процесса через API"""
+    url = f"{BASE_URL}/processes"
+    data = {
+        "name": name,
+        "script": script,
+        **options
+    }
+    
+    response = requests.post(url, json=data)
+    return response.json()
+
+def get_processes():
+    """Получение списка всех процессов"""
+    url = f"{BASE_URL}/processes"
+    response = requests.get(url)
+    return response.json()
+
+def control_process(name, action):
+    """Управление процессом (start, stop, restart)"""
+    url = f"{BASE_URL}/processes/{name}/{action}"
+    response = requests.post(url)
+    return response.json()
+
+# Примеры использования
+if __name__ == "__main__":
+    # Создание процесса
+    result = create_process(
+        name="python-app",
+        script="./app.py",
+        instances=2,
+        env={"PYTHONPATH": "/usr/local/lib/python3.9"}
+    )
+    print(f"Процесс создан: {result}")
+    
+    # Получение списка процессов
+    processes = get_processes()
+    print(f"Активные процессы: {processes}")
+    
+    # Перезапуск процесса
+    restart_result = control_process("python-app", "restart")
+    print(f"Процесс перезапущен: {restart_result}")
+```
+
 ### Массовые операции
 
 ```typescript
