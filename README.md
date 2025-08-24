@@ -56,6 +56,42 @@ npm run build
 npm start
 ```
 
+## Запуск в Docker
+
+### Быстрый запуск
+
+```bash
+./docker-run.sh
+```
+
+### Ручной запуск
+
+```bash
+# Создание необходимых директорий
+mkdir -p process-results logs
+
+# Сборка и запуск
+docker-compose up --build -d
+
+# Проверка статуса
+docker-compose ps
+```
+
+### Управление контейнером
+
+```bash
+# Просмотр логов
+docker-compose logs -f
+
+# Остановка
+docker-compose down
+
+# Перезапуск
+docker-compose restart
+```
+
+Подробная документация по Docker: [DOCKER.md](./DOCKER.md)
+
 ## Использование
 
 ### Базовое использование

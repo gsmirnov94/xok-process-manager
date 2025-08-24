@@ -95,16 +95,16 @@ export class ProcessManager {
 
       // Объединяем конфигурацию по умолчанию с переданной конфигурацией
       const mergedConfig: ProcessConfig = {
-        ...this.options.defaultProcessConfig,
+        ...(this.options.defaultProcessConfig || {}),
         ...config,
         // Глубокое объединение для вложенных объектов
         env: {
-          ...this.options.defaultProcessConfig?.env,
-          ...config.env
+          ...(this.options.defaultProcessConfig?.env || {}),
+          ...(config.env || {})
         },
         callbacks: {
-          ...this.options.defaultProcessConfig?.callbacks,
-          ...config.callbacks
+          ...(this.options.defaultProcessConfig?.callbacks || {}),
+          ...(config.callbacks || {})
         }
       };
 
@@ -156,6 +156,12 @@ export class ProcessManager {
       });
     } catch (error) {
       console.error(`Error creating process ${processName}:`, error);
+      console.error('Error details:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        config: config,
+        options: this.options
+      });
       throw error;
     }
   }

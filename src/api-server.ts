@@ -19,14 +19,103 @@ export class ProcessManagerAPI {
     this.setupRoutes();
   }
 
+  /**
+   * Логирует ошибку с детальной информацией
+   */
+  private logError(context: string, error: unknown, req?: Request): void {
+    console.error(`[ERROR] ${context}:`, {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      request: req ? {
+        method: req.method,
+        path: req.path,
+        body: req.body,
+        query: req.query,
+        params: req.params
+      } : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Отправляет ошибку клиенту с логированием
+   */
+  private sendError(res: Response, context: string, error: unknown, req?: Request, statusCode: number = 500): void {
+    this.logError(context, error, req);
+    
+    res.status(statusCode).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+
   private setupMiddleware(): void {
     this.app.use(cors.default());
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true }));
     
-    // Логирование запросов
+    // Логирование запросов и ответов
     this.app.use((req: Request, res: Response, next: NextFunction) => {
-      console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+      const startTime = Date.now();
+      const requestId = Math.random().toString(36).substring(7);
+      
+      // Логируем входящий запрос
+      console.log(`[${requestId}] ${new Date().toISOString()} - ${req.method} ${req.path} - Started`);
+      console.log(`[${requestId}] Request Headers:`, JSON.stringify(req.headers, null, 2));
+      if (req.body && Object.keys(req.body).length > 0) {
+        console.log(`[${requestId}] Request Body:`, JSON.stringify(req.body, null, 2));
+      }
+      if (req.query && Object.keys(req.query).length > 0) {
+        console.log(`[${requestId}] Query Params:`, JSON.stringify(req.query, null, 2));
+      }
+      if (req.params && Object.keys(req.params).length > 0) {
+        console.log(`[${requestId}] Route Params:`, JSON.stringify(req.params, null, 2));
+      }
+
+      // Перехватываем отправку ответа для логирования
+      const originalSend = res.send;
+      const originalJson = res.json;
+      const originalStatus = res.status;
+
+      let responseBody: any;
+      let statusCode: number = 200;
+
+      res.status = function(code: number) {
+        statusCode = code;
+        return originalStatus.call(this, code);
+      };
+
+      res.json = function(body: any) {
+        responseBody = body;
+        return originalJson.call(this, body);
+      };
+
+      res.send = function(body: any) {
+        responseBody = body;
+        return originalSend.call(this, body);
+      };
+
+      // Логируем ответ после завершения
+      res.on('finish', () => {
+        const duration = Date.now() - startTime;
+        const logLevel = statusCode >= 400 ? 'ERROR' : statusCode >= 300 ? 'WARN' : 'INFO';
+        
+        console.log(`[${requestId}] ${new Date().toISOString()} - ${req.method} ${req.path} - ${statusCode} - ${duration}ms - ${logLevel}`);
+        
+        if (responseBody) {
+          // Ограничиваем размер лога ответа
+          const responseStr = typeof responseBody === 'string' ? responseBody : JSON.stringify(responseBody);
+          if (responseStr.length > 1000) {
+            console.log(`[${requestId}] Response Body (truncated):`, responseStr.substring(0, 1000) + '...');
+          } else {
+            console.log(`[${requestId}] Response Body:`, responseStr);
+          }
+        }
+        
+        console.log(`[${requestId}] ${req.method} ${req.path} - Completed`);
+      });
+
       next();
     });
   }
@@ -51,11 +140,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({ 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Initializing PM2', error, req);
       }
     });
 
@@ -85,11 +170,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Creating process', error, req);
       }
     });
 
@@ -104,11 +185,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Getting all processes', error, req);
       }
     });
 
@@ -132,11 +209,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Getting process info', error, req);
       }
     });
 
@@ -152,11 +225,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Starting process', error, req);
       }
     });
 
@@ -172,11 +241,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Stopping process', error, req);
       }
     });
 
@@ -192,11 +257,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Restarting process', error, req);
       }
     });
 
@@ -212,11 +273,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Deleting process', error, req);
       }
     });
 
@@ -232,11 +289,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Getting process status', error, req);
       }
     });
 
@@ -251,11 +304,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Stopping all processes', error, req);
       }
     });
 
@@ -270,11 +319,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Restarting all processes', error, req);
       }
     });
 
@@ -308,11 +353,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Saving result file', error, req);
       }
     });
 
@@ -328,11 +369,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Getting process results', error, req);
       }
     });
 
@@ -348,11 +385,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Getting all process results', error, req);
       }
     });
 
@@ -371,11 +404,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Creating process results ZIP', error, req);
       }
     });
 
@@ -393,11 +422,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Creating all results ZIP', error, req);
       }
     });
 
@@ -413,11 +438,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Deleting result file', error, req);
       }
     });
 
@@ -433,11 +454,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Clearing process results', error, req);
       }
     });
 
@@ -452,11 +469,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Clearing all results', error, req);
       }
     });
 
@@ -471,11 +484,7 @@ export class ProcessManagerAPI {
           timestamp: new Date().toISOString()
         });
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Getting statistics', error, req);
       }
     });
 
@@ -494,11 +503,7 @@ export class ProcessManagerAPI {
         }, 100);
         
       } catch (error) {
-        res.status(500).json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        });
+        this.sendError(res, 'Shutdown', error, req);
       }
     });
 
@@ -513,7 +518,19 @@ export class ProcessManagerAPI {
 
     // Обработка ошибок
     this.app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
-      console.error('API Error:', error);
+      const requestId = Math.random().toString(36).substring(7);
+      console.error(`[${requestId}] API Error in ${req.method} ${req.path}:`, {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        path: req.path,
+        headers: req.headers,
+        body: req.body,
+        query: req.query,
+        params: req.params
+      });
+      
       res.status(500).json({
         success: false,
         error: 'Internal server error',
@@ -527,15 +544,17 @@ export class ProcessManagerAPI {
    */
   async start(): Promise<void> {
     try {
+      console.log(`[SERVER] Starting Process Manager API server on port ${this.port}...`);
       await this.processManager.init();
       
       this.app.listen(this.port, () => {
-        console.log(`Process Manager API server started on port ${this.port}`);
-        console.log(`Health check: http://localhost:${this.port}/health`);
-        console.log(`API documentation: http://localhost:${this.port}/docs`);
+        console.log(`[SERVER] ✅ Process Manager API server started successfully on port ${this.port}`);
+        console.log(`[SERVER] Health check: http://localhost:${this.port}/health`);
+        console.log(`[SERVER] API documentation: http://localhost:${this.port}/docs`);
+        console.log(`[SERVER] Server ready to accept requests`);
       });
     } catch (error) {
-      console.error('Failed to start API server:', error);
+      console.error('[SERVER] ❌ Failed to start API server:', error);
       throw error;
     }
   }
@@ -544,8 +563,9 @@ export class ProcessManagerAPI {
    * Останавливает HTTP сервер
    */
   stop(): void {
+    console.log('[SERVER] Stopping Process Manager API server...');
     this.processManager.disconnect();
-    console.log('Process Manager API server stopped');
+    console.log('[SERVER] ✅ Process Manager API server stopped successfully');
   }
 
   /**
