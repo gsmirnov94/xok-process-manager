@@ -40,6 +40,7 @@ export interface ProcessManagerOptions {
   autoRestart?: boolean;
   logLevel?: 'error' | 'warn' | 'info' | 'debug';
   defaultOutputDirectory?: string;
+  defaultProcessConfig?: Partial<ProcessConfig>;
 }
 
 export interface ResultFile {

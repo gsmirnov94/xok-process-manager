@@ -662,4 +662,68 @@ describe('ProcessManager', () => {
       exitSpy.mockRestore();
     });
   });
+
+  describe('defaultProcessConfig', () => {
+    it('should merge default config with process config', async () => {
+      const processManager = new ProcessManager({
+        defaultProcessConfig: {
+          instances: 2,
+          exec_mode: 'cluster',
+          env: { NODE_ENV: 'production' },
+          callbacks: {
+            onStart: () => console.log('Default onStart')
+          }
+        }
+      });
+
+      await processManager.init();
+
+      const processId = await processManager.createProcess({
+        name: 'test-process',
+        script: './test.js',
+        env: { CUSTOM_VAR: 'test' }
+      });
+
+      expect(processId).toBeDefined();
+      
+      // Проверяем, что конфигурация объединена
+      const savedConfig = (processManager as any).processes.get('test-process');
+      expect(savedConfig.instances).toBe(2);
+      expect(savedConfig.exec_mode).toBe('cluster');
+      expect(savedConfig.env.NODE_ENV).toBe('production');
+      expect(savedConfig.env.CUSTOM_VAR).toBe('test');
+      expect(savedConfig.callbacks?.onStart).toBeDefined();
+
+      await processManager.deleteProcess('test-process');
+      processManager.disconnect();
+    });
+
+    it('should override default config with process config', async () => {
+      const processManager = new ProcessManager({
+        defaultProcessConfig: {
+          instances: 2,
+          exec_mode: 'cluster'
+        }
+      });
+
+      await processManager.init();
+
+      const processId = await processManager.createProcess({
+        name: 'test-process-override',
+        script: './test.js',
+        instances: 1,
+        exec_mode: 'fork'
+      });
+
+      expect(processId).toBeDefined();
+      
+      // Проверяем, что переданная конфигурация переопределяет значения по умолчанию
+      const savedConfig = (processManager as any).processes.get('test-process-override');
+      expect(savedConfig.instances).toBe(1);
+      expect(savedConfig.exec_mode).toBe('fork');
+
+      await processManager.deleteProcess('test-process-override');
+      processManager.disconnect();
+    });
+  });
 });

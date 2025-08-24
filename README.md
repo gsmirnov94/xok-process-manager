@@ -66,6 +66,38 @@ const processManager = new ProcessManager({
   autoRestart: true,
   logLevel: 'info'
 });
+```
+
+### Использование с конфигурацией по умолчанию
+
+```typescript
+import { ProcessManager } from 'xok-process-manager';
+
+const processManager = new ProcessManager({
+  maxProcesses: 10,
+  autoRestart: true,
+  logLevel: 'info',
+  defaultProcessConfig: {
+    instances: 2,
+    exec_mode: 'cluster',
+    watch: true,
+    env: {
+      NODE_ENV: 'production'
+    },
+    callbacks: {
+      onStart: () => console.log('🟢 Процесс запущен'),
+      onStop: () => console.log('🔴 Процесс остановлен')
+    }
+  }
+});
+
+// Теперь все новые процессы будут автоматически использовать эти настройки по умолчанию
+const processId = await processManager.createProcess({
+  name: 'my-app',
+  script: './app.js'
+  // Остальные настройки будут взяты из defaultProcessConfig
+});
+```
 
 // Важно: дождаться инициализации соединения с PM2
 await processManager.init();
@@ -278,6 +310,7 @@ constructor(options?: ProcessManagerOptions)
 - `autoRestart`: Автоматический перезапуск процессов (по умолчанию: true)
 - `logLevel`: Уровень логирования (по умолчанию: 'info')
 - `defaultOutputDirectory`: Директория по умолчанию для файлов результатов (по умолчанию: './process-results')
+- `defaultProcessConfig`: Конфигурация по умолчанию для всех новых процессов (объединяется с переданной конфигурацией)
 
 ### ProcessConfig
 
