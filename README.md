@@ -17,8 +17,22 @@ Node.js TypeScript проект для управления процессами
 
 ## Установка
 
+### Локальная установка для разработки
+
 ```bash
 npm install
+```
+
+### Установка через npm
+
+```bash
+npm install xok-process-manager
+```
+
+### Или с помощью yarn
+
+```bash
+yarn add xok-process-manager
 ```
 
 ## Сборка
@@ -45,7 +59,7 @@ npm start
 ### Базовое использование
 
 ```typescript
-import { ProcessManager } from './src';
+import { ProcessManager } from 'xok-process-manager';
 
 const processManager = new ProcessManager({
   maxProcesses: 5,
