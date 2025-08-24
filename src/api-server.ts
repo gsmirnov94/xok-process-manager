@@ -14,13 +14,13 @@ export class ProcessManagerAPI {
     this.processManager = processManager;
     this.port = port;
     this.globalCallbacks = globalCallbacks || {};
-    this.app = (express as any)();
+    this.app = express.default();
     this.setupMiddleware();
     this.setupRoutes();
   }
 
   private setupMiddleware(): void {
-    this.app.use((cors as any)());
+    this.app.use(cors.default());
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true }));
     
