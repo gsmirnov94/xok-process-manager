@@ -3,12 +3,16 @@ import { ProcessManagerAPI } from './api-server';
 
 async function main() {
   try {
+    // Получаем путь к директории скриптов из переменной окружения или используем значение по умолчанию
+    const scriptsDirectory = process.env.SCRIPTS_DIRECTORY || './scripts';
+    
     // Создаем экземпляр ProcessManager с настройками
     const processManager = new ProcessManager({
       maxProcesses: 20,
       autoRestart: true,
       logLevel: 'info',
-      defaultOutputDirectory: './process-results'
+      defaultOutputDirectory: './process-results',
+      scriptsDirectory
     });
 
     // Создаем API сервер
@@ -35,6 +39,7 @@ async function main() {
     console.log('POST /processes/:name/results   - Save result file');
     console.log('GET  /processes/:name/results   - Get process results');
     console.log('GET  /results                   - Get all results');
+    console.log('GET  /scripts                   - Get available scripts');
     console.log('POST /processes/:name/results/zip - Create process results ZIP');
     console.log('POST /results/zip               - Create all results ZIP');
     console.log('DELETE /processes/:name/results/:fileName - Delete result file');

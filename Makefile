@@ -41,10 +41,11 @@ test-api: ## Протестировать API
 	@echo "Тестирование API..."
 	@curl -s http://localhost:3000/health | jq . || echo "Health check не работает"
 	@curl -s http://localhost:3000/processes | jq . || echo "API процессов не работает"
+	@curl -s http://localhost:3000/scripts | jq . || echo "API скриптов не работает"
 
 full-setup: ## Полная настройка и запуск
 	@echo "🚀 Полная настройка Process Manager API..."
-	@mkdir -p process-results logs
+	@mkdir -p process-results logs scripts
 	@make build
 	@make run
 	@echo "⏳ Ожидание запуска сервиса..."

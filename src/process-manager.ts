@@ -19,8 +19,9 @@ export class ProcessManager {
       ...options
     };
     
-    // Создаем директорию для результатов, если она не существует
+    // Создаем директории, если они не существуют
     this.ensureOutputDirectory();
+    this.ensureScriptsDirectory();
   }
 
   /**
@@ -34,6 +35,21 @@ export class ProcessManager {
         console.log(`Created output directory: ${outputDir}`);
       } catch (error) {
         console.error(`Error creating output directory ${outputDir}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Проверяет и создает директорию для скриптов
+   */
+  private ensureScriptsDirectory(): void {
+    const scriptsDir = this.options.scriptsDirectory || './scripts';
+    if (!fs.existsSync(scriptsDir)) {
+      try {
+        fs.mkdirSync(scriptsDir, { recursive: true });
+        console.log(`Created scripts directory: ${scriptsDir}`);
+      } catch (error) {
+        console.error(`Error creating scripts directory ${scriptsDir}:`, error);
       }
     }
   }
@@ -780,6 +796,35 @@ export class ProcessManager {
       averageFilesPerProcess: processesWithResults > 0 ? totalFiles / processesWithResults : 0,
       averageFileSize: totalFiles > 0 ? totalSize / totalFiles : 0
     };
+  }
+
+  /**
+   * Получает список доступных скриптов в директории скриптов
+   */
+  getAvailableScripts(): string[] {
+    try {
+      const scriptsDir = this.options.scriptsDirectory || './scripts';
+      if (!fs.existsSync(scriptsDir)) {
+        return [];
+      }
+
+      const files = fs.readdirSync(scriptsDir);
+      return files.filter(file => {
+        const filePath = path.join(scriptsDir, file);
+        const stats = fs.statSync(filePath);
+        return stats.isFile() && (file.endsWith('.js') || file.endsWith('.ts') || file.endsWith('.py') || file.endsWith('.sh'));
+      });
+    } catch (error) {
+      console.error('Error reading scripts directory:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Получает путь к директории скриптов
+   */
+  getScriptsDirectory(): string {
+    return this.options.scriptsDirectory || './scripts';
   }
 
   /**

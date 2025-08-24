@@ -491,6 +491,24 @@ export class ProcessManagerAPI {
       }
     });
 
+    // Получение списка доступных скриптов
+    this.app.get('/scripts', async (req: Request, res: Response) => {
+      try {
+        const scripts = this.processManager.getAvailableScripts();
+        res.json({
+          success: true,
+          data: {
+            scripts,
+            count: scripts.length,
+            directory: this.processManager.getScriptsDirectory?.() || './scripts'
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        this.sendError(res, 'Getting available scripts', error, req);
+      }
+    });
+
     // Принудительное завершение
     this.app.post('/shutdown', async (req: Request, res: Response) => {
       try {

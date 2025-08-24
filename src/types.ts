@@ -41,6 +41,7 @@ export interface ProcessManagerOptions {
   logLevel?: 'error' | 'warn' | 'info' | 'debug';
   defaultOutputDirectory?: string;
   defaultProcessConfig?: Partial<ProcessConfig>;
+  scriptsDirectory?: string;
 }
 
 export interface ResultFile {

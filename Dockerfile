@@ -17,8 +17,8 @@ RUN npm install -g pm2
 COPY src/ ./src/
 COPY tsconfig.json ./
 
-# Копируем пример скрипта для тестирования
-COPY example-script.js ./
+# Создаем директорию для скриптов (будет монтироваться через volume)
+RUN mkdir -p /app/scripts
 
 # Компилируем TypeScript
 RUN npm run build || tsc

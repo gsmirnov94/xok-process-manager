@@ -68,13 +68,34 @@ npm start
 
 ```bash
 # Создание необходимых директорий
-mkdir -p process-results logs
+mkdir -p process-results logs scripts
 
 # Сборка и запуск
 docker-compose up --build -d
 
 # Проверка статуса
 docker-compose ps
+```
+
+### Настройка скриптов
+
+Директория `scripts/` монтируется в контейнер и содержит исполняемые скрипты:
+
+```bash
+# Добавьте ваши скрипты в директорию scripts/
+cp your-script.js scripts/
+chmod +x scripts/your-script.js
+
+# Получите список доступных скриптов
+curl http://localhost:3000/scripts
+
+# Создайте процесс с вашим скриптом
+curl -X POST http://localhost:3000/processes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-process",
+    "script": "your-script.js"
+  }'
 ```
 
 ### Управление контейнером

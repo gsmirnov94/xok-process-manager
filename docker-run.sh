@@ -17,7 +17,7 @@ if ! docker info &> /dev/null; then
 fi
 
 # Создаем необходимые директории
-mkdir -p process-results logs
+mkdir -p process-results logs scripts
 
 # Собираем и запускаем контейнер
 echo "📦 Сборка Docker образа..."
