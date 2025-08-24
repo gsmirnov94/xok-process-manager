@@ -37,12 +37,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gsmirnov94/process-manager.git"
+    "url": "https://github.com/gsmirnov94/xok-process-manager.git"
   },
   "bugs": {
-    "url": "https://github.com/gsmirnov94/process-manager/issues"
+    "url": "https://github.com/gsmirnov94/xok-process-manager/issues"
   },
-  "homepage": "https://github.com/gsmirnov94/process-manager#readme",
+  "homepage": "https://github.com/gsmirnov94/xok-process-manager#readme",
   "engines": {
     "node": ">=16.0.0"
   },
