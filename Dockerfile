@@ -14,6 +14,9 @@ RUN npm ci
 COPY src/ ./src/
 COPY tsconfig.json ./
 
+# Копируем пример скрипта для тестирования
+COPY example-script.js ./
+
 # Компилируем TypeScript
 RUN npm run build || tsc
 

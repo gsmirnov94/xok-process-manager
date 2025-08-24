@@ -15,5 +15,3 @@ tests
 *.test.js
 jest.config.js
 tsconfig.test.json
-example-script.js
-examples
