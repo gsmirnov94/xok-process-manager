@@ -45,7 +45,7 @@ export class ProcessManagerAPI {
     
     res.status(statusCode).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString()
     });
   }
