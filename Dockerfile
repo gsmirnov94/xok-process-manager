@@ -10,6 +10,9 @@ COPY package*.json ./
 # Устанавливаем все зависимости (включая dev для TypeScript)
 RUN npm ci
 
+# Устанавливаем PM2 глобально для доступа к CLI командам
+RUN npm install -g pm2
+
 # Копируем исходный код
 COPY src/ ./src/
 COPY tsconfig.json ./
