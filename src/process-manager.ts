@@ -109,40 +109,25 @@ export class ProcessManager {
         throw new Error(`Maximum number of processes (${this.options.maxProcesses}) reached`);
       }
 
-      // Объединяем конфигурацию по умолчанию с переданной конфигурацией
-      const mergedConfig: ProcessConfig = {
-        ...(this.options.defaultProcessConfig || {}),
-        ...config,
-        // Глубокое объединение для вложенных объектов
-        env: {
-          ...(this.options.defaultProcessConfig?.env || {}),
-          ...(config.env || {})
-        },
-        callbacks: {
-          ...(this.options.defaultProcessConfig?.callbacks || {}),
-          ...(config.callbacks || {})
-        }
-      };
+      // Сохраняем конфигурацию процесса
+      this.processes.set(config.name, config);
 
-      // Сохраняем объединенную конфигурацию процесса
-      this.processes.set(mergedConfig.name, mergedConfig);
-
-      processName = mergedConfig.name;
+      processName = config.name;
 
               // Создаем процесс через PM2
         return new Promise((resolve, reject) => {
           const pm2Config: any = {
-            name: mergedConfig.name,
-            script: mergedConfig.script,
-            args: mergedConfig.args || [],
-            cwd: mergedConfig.cwd || process.cwd(),
-            env: mergedConfig.env || {},
-            instances: mergedConfig.instances || 1,
-            execMode: mergedConfig.execMode || 'fork',
-            watch: mergedConfig.watch || false,
-            ignoreWatch: mergedConfig.ignoreWatch || [],
-            maxMemoryRestart: mergedConfig.maxMemoryRestart,
-            time: mergedConfig.time || false
+            name: config.name,
+            script: config.script,
+            args: config.args || [],
+            cwd: config.cwd || process.cwd(),
+            env: config.env || {},
+            instances: config.instances || 1,
+            execMode: config.execMode || 'fork',
+            watch: config.watch || false,
+            ignoreWatch: config.ignoreWatch || [],
+            maxMemoryRestart: config.maxMemoryRestart,
+            time: config.time || false
           };
 
           // Handle autoRestart option
@@ -154,9 +139,9 @@ export class ProcessManager {
           }
 
         // Добавляем опциональные поля только если они определены
-        if (mergedConfig.errorFile) pm2Config.error_file = mergedConfig.errorFile;
-        if (mergedConfig.outFile) pm2Config.out_file = mergedConfig.outFile;
-        if (mergedConfig.logFile) pm2Config.log_file = mergedConfig.logFile;
+        if (config.errorFile) pm2Config.error_file = config.errorFile;
+        if (config.outFile) pm2Config.out_file = config.outFile;
+        if (config.logFile) pm2Config.log_file = config.logFile;
 
         pm2.start(pm2Config, (err: any, proc: any) => {
           if (err) {
@@ -165,16 +150,16 @@ export class ProcessManager {
           }
 
           // Вызываем колбэк запуска
-          if (mergedConfig.callbacks?.onStart) {
+          if (config.callbacks?.onStart) {
             try {
-              mergedConfig.callbacks.onStart();
+              config.callbacks.onStart();
             } catch (callbackErr) {
-              console.error(`Error in onStart callback for process ${mergedConfig.name}:`, callbackErr);
+              console.error(`Error in onStart callback for process ${config.name}:`, callbackErr);
             }
           }
 
           const pmId = Array.isArray(proc) && proc.length > 0 ? proc[0].pm2_env?.pm_id : 0;
-          console.log(`Process ${mergedConfig.name} created successfully with PM2 ID: ${pmId}`);
+          console.log(`Process ${config.name} created successfully with PM2 ID: ${pmId}`);
           resolve(pmId || 0);
         });
       });
