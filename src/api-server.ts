@@ -162,14 +162,11 @@ export class ProcessManagerAPI {
           config.callbacks = { ...this.globalCallbacks };
         }
 
-        // Extract autoRestart option from request body and pass it to process manager
-        const autoRestart = req.body.autoRestart !== undefined ? req.body.autoRestart : true;
-
-        const pmId = await this.processManager.createProcess(config, { autoRestart });
+        const id = await this.processManager.createProcess(config);
         res.json({
           success: true,
           message: `Process ${config.name} created successfully`,
-          pmId,
+          id,
           timestamp: new Date().toISOString()
         });
       } catch (error) {
@@ -192,16 +189,24 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Получение информации о конкретном процессе
-    this.app.get('/processes/:name', async (req: Request, res: Response) => {
+    // Получение информации о конкретном процессе по ID
+    this.app.get('/processes/:id', async (req: Request, res: Response) => {
       try {
-        const { name } = req.params;
-        const processInfo = await this.processManager.getProcessInfo(name);
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const processInfo = await this.processManager.getProcessInfo(id);
         
         if (!processInfo) {
           return res.status(404).json({
             success: false,
-            error: `Process ${name} not found`,
+            error: `Process with ID ${id} not found`,
             timestamp: new Date().toISOString()
           });
         }
@@ -216,15 +221,24 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Запуск процесса
-    this.app.post('/processes/:name/start', async (req: Request, res: Response) => {
+    // Запуск процесса по ID
+    this.app.post('/processes/:id/start', async (req: Request, res: Response) => {
       try {
-        const { name } = req.params;
-        await this.processManager.startProcess(name);
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        await this.processManager.startProcess(id);
         
+        const processName = this.processManager.getProcessName(id) || `ID:${id}`;
         res.json({
           success: true,
-          message: `Process ${name} started successfully`,
+          message: `Process ${processName} started successfully`,
           timestamp: new Date().toISOString()
         });
       } catch (error) {
@@ -232,15 +246,24 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Остановка процесса
-    this.app.post('/processes/:name/stop', async (req: Request, res: Response) => {
+    // Остановка процесса по ID
+    this.app.post('/processes/:id/stop', async (req: Request, res: Response) => {
       try {
-        const { name } = req.params;
-        await this.processManager.stopProcess(name);
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        await this.processManager.stopProcess(id);
         
+        const processName = this.processManager.getProcessName(id) || `ID:${id}`;
         res.json({
           success: true,
-          message: `Process ${name} stopped successfully`,
+          message: `Process ${processName} stopped successfully`,
           timestamp: new Date().toISOString()
         });
       } catch (error) {
@@ -248,15 +271,24 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Перезапуск процесса
-    this.app.post('/processes/:name/restart', async (req: Request, res: Response) => {
+    // Перезапуск процесса по ID
+    this.app.post('/processes/:id/restart', async (req: Request, res: Response) => {
       try {
-        const { name } = req.params;
-        await this.processManager.restartProcess(name);
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        await this.processManager.restartProcess(id);
         
+        const processName = this.processManager.getProcessName(id) || `ID:${id}`;
         res.json({
           success: true,
-          message: `Process ${name} restarted successfully`,
+          message: `Process ${processName} restarted successfully`,
           timestamp: new Date().toISOString()
         });
       } catch (error) {
@@ -264,15 +296,24 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Удаление процесса
-    this.app.delete('/processes/:name', async (req: Request, res: Response) => {
+    // Удаление процесса по ID
+    this.app.delete('/processes/:id', async (req: Request, res: Response) => {
       try {
-        const { name } = req.params;
-        await this.processManager.deleteProcess(name);
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const processName = this.processManager.getProcessName(id) || `ID:${id}`;
+        await this.processManager.deleteProcess(id);
         
         res.json({
           success: true,
-          message: `Process ${name} deleted successfully`,
+          message: `Process ${processName} deleted successfully`,
           timestamp: new Date().toISOString()
         });
       } catch (error) {
@@ -280,15 +321,24 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Получение статуса процесса
-    this.app.get('/processes/:name/status', async (req: Request, res: Response) => {
+    // Получение статуса процесса по ID
+    this.app.get('/processes/:id/status', async (req: Request, res: Response) => {
       try {
-        const { name } = req.params;
-        const status = await this.processManager.getProcessStatus(name);
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const status = await this.processManager.getProcessStatus(id);
+        const processName = this.processManager.getProcessName(id) || `ID:${id}`;
         
         res.json({
           success: true,
-          data: { name, status },
+          data: { id, name: processName, status },
           timestamp: new Date().toISOString()
         });
       } catch (error) {
@@ -326,10 +376,18 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Сохранение файла результата
-    this.app.post('/processes/:name/results', async (req: Request, res: Response) => {
+    // Сохранение файла результата по ID процесса
+    this.app.post('/processes/:id/results', async (req: Request, res: Response) => {
       try {
-        const { name } = req.params;
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
         const { fileName, content, encoding = 'utf8' } = req.body;
         
         if (!fileName || content === undefined) {
@@ -347,7 +405,7 @@ export class ProcessManagerAPI {
           fileContent = content;
         }
 
-        const filePath = await this.processManager.saveResultFile(name, fileName, fileContent);
+        const filePath = await this.processManager.saveResultFile(id, fileName, fileContent);
         
         res.json({
           success: true,
@@ -360,11 +418,19 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Получение файлов результатов процесса
-    this.app.get('/processes/:name/results', async (req: Request, res: Response) => {
+    // Получение файлов результатов процесса по ID
+    this.app.get('/processes/:id/results', async (req: Request, res: Response) => {
       try {
-        const { name } = req.params;
-        const results = await this.processManager.getProcessResults(name);
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const results = await this.processManager.getProcessResults(id);
         
         res.json({
           success: true,
@@ -392,13 +458,21 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Создание ZIP архива с результатами процесса
-    this.app.post('/processes/:name/results/zip', async (req: Request, res: Response) => {
+    // Создание ZIP архива с результатами процесса по ID
+    this.app.post('/processes/:id/results/zip', async (req: Request, res: Response) => {
       try {
-        const { name } = req.params;
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
         const { outputPath, options } = req.body;
         
-        const zipPath = await this.processManager.createProcessResultsZip(name, outputPath, options);
+        const zipPath = await this.processManager.createProcessResultsZip(id, outputPath, options);
         
         res.json({
           success: true,
@@ -429,11 +503,20 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Удаление файла результата
-    this.app.delete('/processes/:name/results/:fileName', async (req: Request, res: Response) => {
+    // Удаление файла результата по ID процесса
+    this.app.delete('/processes/:id/results/:fileName', async (req: Request, res: Response) => {
       try {
-        const { name, fileName } = req.params;
-        await this.processManager.deleteResultFile(name, fileName);
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const { fileName } = req.params;
+        await this.processManager.deleteResultFile(id, fileName);
         
         res.json({
           success: true,
@@ -445,15 +528,24 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Очистка результатов процесса
-    this.app.delete('/processes/:name/results', async (req: Request, res: Response) => {
+    // Очистка результатов процесса по ID
+    this.app.delete('/processes/:id/results', async (req: Request, res: Response) => {
       try {
-        const { name } = req.params;
-        await this.processManager.clearProcessResults(name);
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid process ID',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const processName = this.processManager.getProcessName(id) || `ID:${id}`;
+        await this.processManager.clearProcessResults(id);
         
         res.json({
           success: true,
-          message: `All result files for process ${name} cleared successfully`,
+          message: `All result files for process ${processName} cleared successfully`,
           timestamp: new Date().toISOString()
         });
       } catch (error) {
@@ -506,6 +598,26 @@ export class ProcessManagerAPI {
         });
       } catch (error) {
         this.sendError(res, 'Getting available scripts', error, req);
+      }
+    });
+
+    // Получение списка ID всех процессов
+    this.app.get('/processes/ids', async (req: Request, res: Response) => {
+      try {
+        const processIds = this.processManager.getProcessIds();
+        const processesWithNames = processIds.map(id => ({
+          id,
+          name: this.processManager.getProcessName(id) || `ID:${id}`
+        }));
+        
+        res.json({
+          success: true,
+          data: processesWithNames,
+          count: processesWithNames.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        this.sendError(res, 'Getting process IDs', error, req);
       }
     });
 
