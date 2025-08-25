@@ -12,9 +12,6 @@ export class ProcessManager {
 
   constructor(options: ProcessManagerOptions = {}) {
     this.options = {
-      maxProcesses: 10,
-      autoRestart: true,
-      logLevel: 'info',
       defaultOutputDirectory: './process-results',
       ...options
     };
@@ -99,15 +96,13 @@ export class ProcessManager {
   /**
    * Создает новый процесс с указанными колбэками
    */
-  async createProcess(config: ProcessConfig, options?: { autoRestart?: boolean }): Promise<number> {
+  async createProcess(config: ProcessConfig): Promise<number> {
     let processName: string = config.name;
     
     try {
       await this.ensureConnection();
 
-      if (this.processes.size >= (this.options.maxProcesses || 10)) {
-        throw new Error(`Maximum number of processes (${this.options.maxProcesses}) reached`);
-      }
+
 
       // Сохраняем конфигурацию процесса
       this.processes.set(config.name, config);
@@ -129,14 +124,6 @@ export class ProcessManager {
             maxMemoryRestart: config.maxMemoryRestart,
             time: config.time || false
           };
-
-          // Handle autoRestart option
-          const autoRestart = options?.autoRestart !== undefined ? options.autoRestart : this.options.autoRestart;
-          if (!autoRestart) {
-            // Disable PM2 restart behavior
-            pm2Config.autorestart = false;
-            pm2Config.max_restarts = 0;
-          }
 
         // Добавляем опциональные поля только если они определены
         if (config.errorFile) pm2Config.error_file = config.errorFile;

@@ -36,9 +36,6 @@ export interface ProcessInfo {
 }
 
 export interface ProcessManagerOptions {
-  maxProcesses?: number;
-  autoRestart?: boolean;
-  logLevel?: 'error' | 'warn' | 'info' | 'debug';
   defaultOutputDirectory?: string;
   scriptsDirectory?: string;
 }
