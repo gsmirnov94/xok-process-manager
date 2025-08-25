@@ -8,6 +8,7 @@ function createPM2Mock() {
   const state = {
     connected: false,
     processes: new Map<string, { name: string }>(),
+    nextId: 1,
   };
 
   return {
@@ -23,7 +24,7 @@ function createPM2Mock() {
       // Supports both start(config) and start(name)
       const name = typeof arg === 'string' ? arg : arg.name;
       state.processes.set(name, { name });
-      cb(null, [{ pm2_env: { pm_id: 1 } }]);
+      cb(null, [{ pm2_env: { pm_id: state.nextId++ } }]);
     }),
     stop: jest.fn((name: string, cb: (err?: any) => void) => {
       cb();
@@ -103,13 +104,28 @@ function createFsMock() {
       if (!files.has(p)) throw new Error('ENOENT');
       files.delete(p);
     }),
-    createWriteStream: jest.fn(() => ({
-      on: jest.fn(),
-      once: jest.fn(),
-      emit: jest.fn(),
-      write: jest.fn(),
-      end: jest.fn(),
-    })),
+    createWriteStream: jest.fn(() => {
+      const handlers: Record<string, Array<() => void>> = {};
+      return {
+        on: jest.fn((evt: string, cb: () => void) => {
+          handlers[evt] = handlers[evt] || [];
+          handlers[evt].push(cb);
+        }),
+        once: jest.fn((evt: string, cb: () => void) => {
+          handlers[evt] = handlers[evt] || [];
+          const wrapper = () => {
+            cb();
+            handlers[evt] = (handlers[evt] || []).filter(fn => fn !== wrapper);
+          };
+          handlers[evt].push(wrapper);
+        }),
+        emit: jest.fn((evt: string) => {
+          (handlers[evt] || []).forEach(fn => fn());
+        }),
+        write: jest.fn(),
+        end: jest.fn(),
+      };
+    }),
   };
 }
 
@@ -150,6 +166,152 @@ describe('ProcessManager', () => {
     });
   });
 
+  test('validation errors in createProcess and save/delete file paths', async () => {
+    const { ProcessManager } = await import('../process-manager');
+    const manager = new ProcessManager();
+
+    // invalid name
+    await expect(manager.createProcess({ name: '../bad', script: 's.js' } as any)).rejects.toThrow();
+    // invalid script path
+    await expect(manager.createProcess({ name: 'ok', script: '/abs.js' } as any)).rejects.toThrow();
+    await expect(manager.createProcess({ name: 'ok', script: '../rel.js' } as any)).rejects.toThrow();
+    // invalid cwd
+    await expect(manager.createProcess({ name: 'ok', script: 's.js', cwd: '../x' } as any)).rejects.toThrow();
+    // invalid outputDirectory
+    await expect(manager.createProcess({ name: 'ok', script: 's.js', outputDirectory: '../out' } as any)).rejects.toThrow();
+    // invalid env
+    await expect(manager.createProcess({ name: 'ok', script: 's.js', env: { 'A/..': '1' } as any })).rejects.toThrow();
+    await expect(manager.createProcess({ name: 'ok', script: 's.js', env: { A: 'v/..' } as any })).rejects.toThrow();
+
+    // valid process to test file name validation and non-existing deletion
+    const okId = await manager.createProcess({ name: 'val', script: 's.js' });
+    await expect(manager.saveResultFile(okId, 'a/../b.txt', 'x')).rejects.toThrow();
+    await expect(manager.deleteResultFile(okId, 'nope.txt')).rejects.toThrow();
+  });
+
+  test('createProcess handles pm2.start error with logging', async () => {
+    const { ProcessManager } = await import('../process-manager');
+    const manager = new ProcessManager();
+
+    // First ensure connection
+    (pm2Mock.connect as any).mockImplementationOnce((cb: any) => { pm2Mock.__state.connected = true; cb(); });
+    // Force start error
+    (pm2Mock.start as any).mockImplementationOnce((_cfg: any, cb: any) => cb(new Error('start fail')));
+    await expect(manager.createProcess({ name: 'err', script: 's.js' })).rejects.toThrow('start fail');
+  });
+
+  test('init() handles PM2 connect error', async () => {
+    const { ProcessManager } = await import('../process-manager');
+    const manager = new ProcessManager();
+    (pm2Mock.connect as any).mockImplementationOnce((cb: any) => cb(new Error('connect fail')));
+    await expect(manager.init()).rejects.toThrow('connect fail');
+  });
+
+  test('getProcessInfo null when unknown, and when pm2.describe errors', async () => {
+    const { ProcessManager } = await import('../process-manager');
+    const manager = new ProcessManager();
+    const id = await manager.createProcess({ name: 'p5', script: 's.js' });
+
+    // Unknown id
+    await expect(manager.getProcessInfo(999)).resolves.toBeNull();
+    // describe error
+    (pm2Mock.describe as any).mockImplementationOnce((_n: string, cb: any) => cb(new Error('desc fail')));
+    await expect(manager.getProcessInfo(id)).resolves.toBeNull();
+  });
+
+  test('getAllProcesses returns [] on pm2.list error', async () => {
+    const { ProcessManager } = await import('../process-manager');
+    const manager = new ProcessManager();
+    (pm2Mock.list as any).mockImplementationOnce((cb: any) => cb(new Error('list fail')));
+    await expect(manager.getAllProcesses()).resolves.toEqual([]);
+  });
+
+  test('stopAllProcesses and restartAllProcesses call callbacks for each', async () => {
+    const { ProcessManager } = await import('../process-manager');
+    const cb1 = { onStop: jest.fn(), onRestart: jest.fn() };
+    const cb2 = { onStop: jest.fn(), onRestart: jest.fn() };
+    const manager = new ProcessManager();
+    const a = await manager.createProcess({ name: 'a', script: 's.js', callbacks: cb1 });
+    const b = await manager.createProcess({ name: 'b', script: 's.js', callbacks: cb2 });
+
+    await manager.stopAllProcesses();
+    expect(cb1.onStop).toHaveBeenCalled();
+    expect(cb2.onStop).toHaveBeenCalled();
+
+    await manager.restartAllProcesses();
+    expect(cb1.onRestart).toHaveBeenCalled();
+    expect(cb2.onRestart).toHaveBeenCalled();
+  });
+
+  test('getAllProcessResults continues on per-process error', async () => {
+    const { ProcessManager } = await import('../process-manager');
+    const manager = new ProcessManager();
+    const id1 = await manager.createProcess({ name: 'r1', script: 's.js' });
+    const id2 = await manager.createProcess({ name: 'r2', script: 's.js' });
+
+    const spy = jest.spyOn(manager as any, 'getProcessResults');
+    spy.mockImplementationOnce(async () => { throw new Error('boom'); });
+    spy.mockImplementationOnce(async () => ({ processName: 'r2', files: [], totalSize: 0, fileCount: 0 }));
+
+    const results = await manager.getAllProcessResults();
+    expect(results).toEqual([{ processName: 'r2', files: [], totalSize: 0, fileCount: 0 }]);
+  });
+
+  test('createProcessResultsZip errors when no files; succeeds when files exist', async () => {
+    const { ProcessManager } = await import('../process-manager');
+    const manager = new ProcessManager({ defaultOutputDirectory: '/out' });
+    const id = await manager.createProcess({ name: 'zipper', script: 's.js' });
+
+    // error when no files
+    await expect(manager.createProcessResultsZip(id)).rejects.toThrow('No result files');
+
+    // add file and succeed
+    await manager.saveResultFile(id, 'one.txt', 'data');
+    const zipPath = await manager.createProcessResultsZip(id, undefined, { compressionLevel: 9 });
+    expect(zipPath).toMatch(/zipper-results/);
+  });
+
+  test('createAllResultsZip errors when none; succeeds with options', async () => {
+    const { ProcessManager } = await import('../process-manager');
+    const manager = new ProcessManager({ defaultOutputDirectory: '/out' });
+    const id = await manager.createProcess({ name: 'pall', script: 's.js' });
+    await expect(manager.createAllResultsZip()).rejects.toThrow('No result files');
+
+    await manager.saveResultFile(id, 'a.txt', 'x');
+    const path1 = await manager.createAllResultsZip(undefined, { flattenStructure: true });
+    expect(path1).toMatch(/all-processes-results/);
+  });
+
+  test('hasProcess, getProcessIds, getProcessName, getResultsStatistics', async () => {
+    const { ProcessManager } = await import('../process-manager');
+    const manager = new ProcessManager({ defaultOutputDirectory: '/out' });
+    const id1 = await manager.createProcess({ name: 's1', script: 's.js' });
+    const id2 = await manager.createProcess({ name: 's2', script: 's.js' });
+    expect(manager.hasProcess(id1)).toBe(true);
+    expect(manager.getProcessIds().sort()).toEqual([id1, id2].sort());
+    expect(manager.getProcessName(id2)).toBe('s2');
+
+    await manager.saveResultFile(id1, 'f1.txt', 'x');
+    const stats = await manager.getResultsStatistics();
+    expect(stats.totalProcesses).toBe(2);
+    expect(stats.totalFiles).toBeGreaterThanOrEqual(1);
+  });
+
+  test('disconnect only when connected; forceShutdown paths with timers', async () => {
+    jest.useFakeTimers();
+    const { ProcessManager } = await import('../process-manager');
+    const manager = new ProcessManager();
+    // not connected yet
+    manager.disconnect();
+
+    // create to have processes, then shutdown triggers stopAll + exit(0)
+    await manager.createProcess({ name: 'qq', script: 's.js' });
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => undefined) as any);
+    await manager.forceShutdown();
+    jest.advanceTimersByTime(2100);
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    jest.useRealTimers();
+  });
   test('createProcess stores config, returns pmId and calls onStart', async () => {
     const { ProcessManager } = await import('../process-manager');
     const onStart = jest.fn();
