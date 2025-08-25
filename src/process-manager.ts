@@ -6,7 +6,7 @@ import archiver from 'archiver';
 import { ProcessConfig, ProcessCallbacks, ProcessInfo, ProcessManagerOptions, ResultFile, ProcessResults, ZipArchiveOptions } from './types';
 
 export class ProcessManager {
-  private processes: Map<string, ProcessConfig> = new Map();
+  private processes: Map<number, ProcessConfig> = new Map();
   private options: ProcessManagerOptions;
   private isConnected: boolean = false;
 
@@ -97,33 +97,23 @@ export class ProcessManager {
    * Создает новый процесс с указанными колбэками
    */
   async createProcess(config: ProcessConfig): Promise<number> {
-    let processName: string = config.name;
-    
     try {
       await this.ensureConnection();
-
-
-
-      // Сохраняем конфигурацию процесса
-      this.processes.set(config.name, config);
-
-      processName = config.name;
-
-              // Создаем процесс через PM2
-        return new Promise((resolve, reject) => {
-          const pm2Config: any = {
-            name: config.name,
-            script: config.script,
-            args: config.args || [],
-            cwd: config.cwd || process.cwd(),
-            env: config.env || {},
-            instances: config.instances || 1,
-            execMode: config.execMode || 'fork',
-            watch: config.watch || false,
-            ignoreWatch: config.ignoreWatch || [],
-            maxMemoryRestart: config.maxMemoryRestart,
-            time: config.time || false
-          };
+      
+      return new Promise((resolve, reject) => {
+        const pm2Config: any = {
+          name: config.name,
+          script: config.script,
+          args: config.args || [],
+          cwd: config.cwd || process.cwd(),
+          env: config.env || {},
+          instances: config.instances || 1,
+          execMode: config.execMode || 'fork',
+          watch: config.watch || false,
+          ignoreWatch: config.ignoreWatch || [],
+          maxMemoryRestart: config.maxMemoryRestart,
+          time: config.time || false
+        };
 
         // Добавляем опциональные поля только если они определены
         if (config.errorFile) pm2Config.error_file = config.errorFile;
@@ -136,22 +126,30 @@ export class ProcessManager {
             return;
           }
 
-          // Вызываем колбэк запуска
-          if (config.callbacks?.onStart) {
-            try {
-              config.callbacks.onStart();
-            } catch (callbackErr) {
-              console.error(`Error in onStart callback for process ${config.name}:`, callbackErr);
-            }
-          }
-
           const pmId = Array.isArray(proc) && proc.length > 0 ? proc[0].pm2_env?.pm_id : 0;
-          console.log(`Process ${config.name} created successfully with PM2 ID: ${pmId}`);
-          resolve(pmId || 0);
+          
+          if (pmId) {
+            // Сохраняем процесс по ID
+            this.processes.set(pmId, config);
+            
+            // Вызываем колбэк запуска
+            if (config.callbacks?.onStart) {
+              try {
+                config.callbacks.onStart();
+              } catch (callbackErr) {
+                console.error(`Error in onStart callback for process ${config.name}:`, callbackErr);
+              }
+            }
+
+            console.log(`Process ${config.name} created successfully with PM2 ID: ${pmId}`);
+            resolve(pmId);
+          } else {
+            reject(new Error('Failed to get PM2 ID for created process'));
+          }
         });
       });
     } catch (error) {
-      console.error(`Error creating process ${processName}:`, error);
+      console.error(`Error creating process:`, error);
       console.error('Error details:', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -163,18 +161,18 @@ export class ProcessManager {
   }
 
   /**
-   * Запускает процесс по имени
+   * Запускает процесс по ID
    */
-  async startProcess(name: string): Promise<void> {
+  async startProcess(pmId: number): Promise<void> {
     await this.ensureConnection();
     
-    const config = this.processes.get(name);
+    const config = this.processes.get(pmId);
     if (!config) {
-      throw new Error(`Process ${name} not found`);
+      throw new Error(`Process with ID ${pmId} not found`);
     }
 
     return new Promise((resolve, reject) => {
-      pm2.start(name, (err: any) => {
+      pm2.start(config.name, (err: any) => {
         if (err) {
           reject(err);
           return;
@@ -185,29 +183,29 @@ export class ProcessManager {
           try {
             config.callbacks.onStart();
           } catch (callbackErr) {
-            console.error(`Error in onStart callback for process ${name}:`, callbackErr);
+            console.error(`Error in onStart callback for process ${config.name}:`, callbackErr);
           }
         }
 
-        console.log(`Process ${name} started successfully`);
+        console.log(`Process ${config.name} started successfully`);
         resolve();
       });
     });
   }
 
   /**
-   * Останавливает процесс по имени
+   * Останавливает процесс по ID
    */
-  async stopProcess(name: string): Promise<void> {
+  async stopProcess(pmId: number): Promise<void> {
     await this.ensureConnection();
     
-    const config = this.processes.get(name);
+    const config = this.processes.get(pmId);
     if (!config) {
-      throw new Error(`Process ${name} not found`);
+      throw new Error(`Process with ID ${pmId} not found`);
     }
 
     return new Promise((resolve, reject) => {
-      pm2.stop(name, (err: any) => {
+      pm2.stop(config.name, (err: any) => {
         if (err) {
           reject(err);
           return;
@@ -218,29 +216,29 @@ export class ProcessManager {
           try {
             config.callbacks.onStop();
           } catch (callbackErr) {
-            console.error(`Error in onStop callback for process ${name}:`, callbackErr);
+            console.error(`Error in onStop callback for process ${config.name}:`, callbackErr);
           }
         }
 
-        console.log(`Process ${name} stopped successfully`);
+        console.log(`Process ${config.name} stopped successfully`);
         resolve();
       });
     });
   }
 
   /**
-   * Перезапускает процесс по имени
+   * Перезапускает процесс по ID
    */
-  async restartProcess(name: string): Promise<void> {
+  async restartProcess(pmId: number): Promise<void> {
     await this.ensureConnection();
     
-    const config = this.processes.get(name);
+    const config = this.processes.get(pmId);
     if (!config) {
-      throw new Error(`Process ${name} not found`);
+      throw new Error(`Process with ID ${pmId} not found`);
     }
 
     return new Promise((resolve, reject) => {
-      pm2.restart(name, (err: any) => {
+      pm2.restart(config.name, (err: any) => {
         if (err) {
           reject(err);
           return;
@@ -251,29 +249,29 @@ export class ProcessManager {
           try {
             config.callbacks.onRestart();
           } catch (callbackErr) {
-            console.error(`Error in onRestart callback for process ${name}:`, callbackErr);
+            console.error(`Error in onRestart callback for process ${config.name}:`, callbackErr);
           }
         }
 
-        console.log(`Process ${name} restarted successfully`);
+        console.log(`Process ${config.name} restarted successfully`);
         resolve();
       });
     });
   }
 
   /**
-   * Удаляет процесс по имени
+   * Удаляет процесс по ID
    */
-  async deleteProcess(name: string): Promise<void> {
+  async deleteProcess(pmId: number): Promise<void> {
     await this.ensureConnection();
     
-    const config = this.processes.get(name);
+    const config = this.processes.get(pmId);
     if (!config) {
-      throw new Error(`Process ${name} not found`);
+      throw new Error(`Process with ID ${pmId} not found`);
     }
 
     return new Promise((resolve, reject) => {
-      pm2.delete(name, (err: any) => {
+      pm2.delete(config.name, (err: any) => {
         if (err) {
           reject(err);
           return;
@@ -284,26 +282,31 @@ export class ProcessManager {
           try {
             config.callbacks.onDelete();
           } catch (callbackErr) {
-            console.error(`Error in onDelete callback for process ${name}:`, callbackErr);
+            console.error(`Error in onDelete callback for process ${config.name}:`, callbackErr);
           }
         }
 
         // Удаляем из локального Map
-        this.processes.delete(name);
-        console.log(`Process ${name} deleted successfully`);
+        this.processes.delete(pmId);
+        console.log(`Process ${config.name} deleted successfully`);
         resolve();
       });
     });
   }
 
   /**
-   * Получает информацию о процессе
+   * Получает информацию о процессе по ID
    */
-  async getProcessInfo(name: string): Promise<ProcessInfo | null> {
+  async getProcessInfo(pmId: number): Promise<ProcessInfo | null> {
     await this.ensureConnection();
     
+    const config = this.processes.get(pmId);
+    if (!config) {
+      return null;
+    }
+
     return new Promise((resolve) => {
-      pm2.describe(name, (err: any, processes: any) => {
+      pm2.describe(config.name, (err: any, processes: any) => {
         if (err || !processes || processes.length === 0) {
           resolve(null);
           return;
@@ -312,7 +315,7 @@ export class ProcessManager {
         const proc = processes[0];
         resolve({
           id: proc.pid || 0,
-          name: proc.name || name,
+          name: proc.name || config.name,
           status: proc.pm2_env?.status || 'unknown',
           cpu: proc.monit?.cpu || 0,
           memory: proc.monit?.memory || 0,
@@ -354,10 +357,10 @@ export class ProcessManager {
   }
 
   /**
-   * Получает статус процесса
+   * Получает статус процесса по ID
    */
-  async getProcessStatus(name: string): Promise<string> {
-    const info = await this.getProcessInfo(name);
+  async getProcessStatus(pmId: number): Promise<string> {
+    const info = await this.getProcessInfo(pmId);
     return info?.status || 'not_found';
   }
 
@@ -375,12 +378,12 @@ export class ProcessManager {
         }
 
         // Вызываем колбэки остановки для всех процессов
-        for (const [name, config] of this.processes) {
+        for (const [pmId, config] of this.processes) {
           if (config.callbacks?.onStop) {
             try {
               config.callbacks.onStop();
             } catch (callbackErr) {
-              console.error(`Error in onStop callback for process ${name}:`, callbackErr);
+              console.error(`Error in onStop callback for process ${config.name}:`, callbackErr);
             }
           }
         }
@@ -405,12 +408,12 @@ export class ProcessManager {
         }
 
         // Вызываем колбэки перезапуска для всех процессов
-        for (const [name, config] of this.processes) {
+        for (const [pmId, config] of this.processes) {
           if (config.callbacks?.onRestart) {
             try {
               config.callbacks.onRestart();
             } catch (callbackErr) {
-              console.error(`Error in onRestart callback for process ${name}:`, callbackErr);
+              console.error(`Error in onRestart callback for process ${config.name}:`, callbackErr);
             }
           }
         }
@@ -429,33 +432,45 @@ export class ProcessManager {
   }
 
   /**
-   * Проверяет, существует ли процесс
+   * Проверяет, существует ли процесс по ID
    */
-  hasProcess(name: string): boolean {
-    return this.processes.has(name);
+  hasProcess(pmId: number): boolean {
+    return this.processes.has(pmId);
   }
 
   /**
-   * Получает список имен всех процессов
+   * Получает список ID всех процессов
    */
-  getProcessNames(): string[] {
+  getProcessIds(): number[] {
     return Array.from(this.processes.keys());
   }
 
   /**
-   * Получает директорию для результатов процесса
+   * Получает имя процесса по ID
    */
-  private getProcessOutputDirectory(processName: string): string {
-    const config = this.processes.get(processName);
-    const outputDir = config?.outputDirectory || this.options.defaultOutputDirectory || './process-results';
-    return path.join(outputDir, processName);
+  getProcessName(pmId: number): string | undefined {
+    const config = this.processes.get(pmId);
+    return config?.name;
   }
 
   /**
-   * Создает директорию для результатов процесса
+   * Получает директорию для результатов процесса по ID
    */
-  private ensureProcessOutputDirectory(processName: string): void {
-    const processOutputDir = this.getProcessOutputDirectory(processName);
+  private getProcessOutputDirectory(pmId: number): string {
+    const config = this.processes.get(pmId);
+    if (!config) {
+      throw new Error(`Process with ID ${pmId} not found`);
+    }
+    
+    const outputDir = config.outputDirectory || this.options.defaultOutputDirectory || './process-results';
+    return path.join(outputDir, config.name);
+  }
+
+  /**
+   * Создает директорию для результатов процесса по ID
+   */
+  private ensureProcessOutputDirectory(pmId: number): void {
+    const processOutputDir = this.getProcessOutputDirectory(pmId);
     if (!fs.existsSync(processOutputDir)) {
       try {
         fs.mkdirSync(processOutputDir, { recursive: true });
@@ -467,15 +482,15 @@ export class ProcessManager {
   }
 
   /**
-   * Сохраняет файл результата для процесса
+   * Сохраняет файл результата для процесса по ID
    */
-  async saveResultFile(processName: string, fileName: string, content: string | Buffer): Promise<string> {
-    if (!this.processes.has(processName)) {
-      throw new Error(`Process ${processName} not found`);
+  async saveResultFile(pmId: number, fileName: string, content: string | Buffer): Promise<string> {
+    if (!this.processes.has(pmId)) {
+      throw new Error(`Process with ID ${pmId} not found`);
     }
 
-    this.ensureProcessOutputDirectory(processName);
-    const processOutputDir = this.getProcessOutputDirectory(processName);
+    this.ensureProcessOutputDirectory(pmId);
+    const processOutputDir = this.getProcessOutputDirectory(pmId);
     const filePath = path.join(processOutputDir, fileName);
 
     try {
@@ -494,14 +509,19 @@ export class ProcessManager {
   }
 
   /**
-   * Получает список файлов результатов для процесса
+   * Получает список файлов результатов для процесса по ID
    */
-  async getProcessResultFiles(processName: string): Promise<ResultFile[]> {
-    if (!this.processes.has(processName)) {
-      throw new Error(`Process ${processName} not found`);
+  async getProcessResultFiles(pmId: number): Promise<ResultFile[]> {
+    if (!this.processes.has(pmId)) {
+      throw new Error(`Process with ID ${pmId} not found`);
     }
 
-    const processOutputDir = this.getProcessOutputDirectory(processName);
+    const config = this.processes.get(pmId);
+    if (!config) {
+      throw new Error(`Process config not found for ID ${pmId}`);
+    }
+
+    const processOutputDir = this.getProcessOutputDirectory(pmId);
     
     if (!fs.existsSync(processOutputDir)) {
       return [];
@@ -521,7 +541,7 @@ export class ProcessManager {
             path: filePath,
             size: stats.size,
             modified: stats.mtime,
-            processName
+            processName: config.name
           });
         }
       }
@@ -529,20 +549,25 @@ export class ProcessManager {
       // Сортируем по времени изменения (новые сначала)
       return resultFiles.sort((a, b) => b.modified.getTime() - a.modified.getTime());
     } catch (error) {
-      console.error(`Error reading result files for process ${processName}:`, error);
+      console.error(`Error reading result files for process ${config.name}:`, error);
       return [];
     }
   }
 
   /**
-   * Получает информацию о результатах процесса
+   * Получает информацию о результатах процесса по ID
    */
-  async getProcessResults(processName: string): Promise<ProcessResults> {
-    const files = await this.getProcessResultFiles(processName);
+  async getProcessResults(pmId: number): Promise<ProcessResults> {
+    const config = this.processes.get(pmId);
+    if (!config) {
+      throw new Error(`Process with ID ${pmId} not found`);
+    }
+
+    const files = await this.getProcessResultFiles(pmId);
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
 
     return {
-      processName,
+      processName: config.name,
       files,
       totalSize,
       fileCount: files.length
@@ -555,11 +580,13 @@ export class ProcessManager {
   async getAllProcessResults(): Promise<ProcessResults[]> {
     const results: ProcessResults[] = [];
     
-    for (const processName of this.processes.keys()) {
+    for (const pmId of this.processes.keys()) {
       try {
-        const processResults = await this.getProcessResults(processName);
+        const processResults = await this.getProcessResults(pmId);
         results.push(processResults);
       } catch (error) {
+        const config = this.processes.get(pmId);
+        const processName = config?.name || `ID:${pmId}`;
         console.error(`Error getting results for process ${processName}:`, error);
       }
     }
@@ -568,21 +595,26 @@ export class ProcessManager {
   }
 
   /**
-   * Создает zip-архив с результатами процесса
+   * Создает zip-архив с результатами процесса по ID
    */
-  async createProcessResultsZip(processName: string, outputPath?: string, options: ZipArchiveOptions = {}): Promise<string> {
-    if (!this.processes.has(processName)) {
-      throw new Error(`Process ${processName} not found`);
+  async createProcessResultsZip(pmId: number, outputPath?: string, options: ZipArchiveOptions = {}): Promise<string> {
+    if (!this.processes.has(pmId)) {
+      throw new Error(`Process with ID ${pmId} not found`);
     }
 
-    const processResults = await this.getProcessResults(processName);
+    const config = this.processes.get(pmId);
+    if (!config) {
+      throw new Error(`Process config not found for ID ${pmId}`);
+    }
+
+    const processResults = await this.getProcessResults(pmId);
     if (processResults.files.length === 0) {
-      throw new Error(`No result files found for process ${processName}`);
+      throw new Error(`No result files found for process ${config.name}`);
     }
 
     const zipPath = outputPath || path.join(
       this.options.defaultOutputDirectory || './process-results',
-      `${processName}-results-${Date.now()}.zip`
+      `${config.name}-results-${Date.now()}.zip`
     );
 
     return new Promise((resolve, reject) => {
@@ -605,7 +637,7 @@ export class ProcessManager {
       // Добавляем файлы в архив
       for (const file of processResults.files) {
         const fileName = options.includeProcessName !== false 
-          ? `${processName}/${file.name}`
+          ? `${config.name}/${file.name}`
           : file.name;
         
         archive.file(file.path, { name: fileName });
@@ -672,18 +704,18 @@ export class ProcessManager {
   }
 
   /**
-   * Удаляет файл результата
+   * Удаляет файл результата по ID процесса
    */
-  async deleteResultFile(processName: string, fileName: string): Promise<void> {
-    if (!this.processes.has(processName)) {
-      throw new Error(`Process ${processName} not found`);
+  async deleteResultFile(pmId: number, fileName: string): Promise<void> {
+    if (!this.processes.has(pmId)) {
+      throw new Error(`Process with ID ${pmId} not found`);
     }
 
-    const processOutputDir = this.getProcessOutputDirectory(processName);
+    const processOutputDir = this.getProcessOutputDirectory(pmId);
     const filePath = path.join(processOutputDir, fileName);
 
     if (!fs.existsSync(filePath)) {
-      throw new Error(`Result file ${fileName} not found for process ${processName}`);
+      throw new Error(`Result file ${fileName} not found for process with ID ${pmId}`);
     }
 
     try {
@@ -696,14 +728,14 @@ export class ProcessManager {
   }
 
   /**
-   * Очищает все результаты процесса
+   * Очищает все результаты процесса по ID
    */
-  async clearProcessResults(processName: string): Promise<void> {
-    if (!this.processes.has(processName)) {
-      throw new Error(`Process ${processName} not found`);
+  async clearProcessResults(pmId: number): Promise<void> {
+    if (!this.processes.has(pmId)) {
+      throw new Error(`Process with ID ${pmId} not found`);
     }
 
-    const processOutputDir = this.getProcessOutputDirectory(processName);
+    const processOutputDir = this.getProcessOutputDirectory(pmId);
     
     if (!fs.existsSync(processOutputDir)) {
       return;
@@ -721,8 +753,12 @@ export class ProcessManager {
         }
       }
 
+      const config = this.processes.get(pmId);
+      const processName = config?.name || `ID:${pmId}`;
       console.log(`All result files cleared for process ${processName}`);
     } catch (error) {
+      const config = this.processes.get(pmId);
+      const processName = config?.name || `ID:${pmId}`;
       console.error(`Error clearing result files for process ${processName}:`, error);
       throw error;
     }
@@ -732,10 +768,12 @@ export class ProcessManager {
    * Очищает все результаты всех процессов
    */
   async clearAllResults(): Promise<void> {
-    for (const processName of this.processes.keys()) {
+    for (const pmId of this.processes.keys()) {
       try {
-        await this.clearProcessResults(processName);
+        await this.clearProcessResults(pmId);
       } catch (error) {
+        const config = this.processes.get(pmId);
+        const processName = config?.name || `ID:${pmId}`;
         console.error(`Error clearing results for process ${processName}:`, error);
       }
     }
