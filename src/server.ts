@@ -1,5 +1,5 @@
 import { ProcessManager } from './process-manager';
-import { ProcessManagerAPI } from './api-server';
+import { ProcessManagerAPI } from './process-manager-api';
 
 async function main() {
   try {

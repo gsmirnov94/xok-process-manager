@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { ProcessManagerAPI } from '../api-server';
+import { ProcessManagerAPI } from '../process-manager-api';
 
 type MockProcessManager = ReturnType<typeof createMockProcessManager>;
 

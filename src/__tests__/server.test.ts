@@ -1,5 +1,5 @@
 import type { ProcessManager as PMType } from '../process-manager';
-import type { ProcessManagerAPI as APIType } from '../api-server';
+import type { ProcessManagerAPI as APIType } from '../process-manager-api';
 
 describe('server.ts main()', () => {
   let originalEnv: NodeJS.ProcessEnv;
@@ -18,7 +18,7 @@ describe('server.ts main()', () => {
       return { ProcessManager: PMMock };
     });
 
-    jest.mock('../api-server', () => {
+    jest.mock('../process-manager-api', () => {
       const APIMock = jest.fn().mockImplementation(() => ({
         start: mockAPIStart,
         stop: mockAPIStop,
@@ -36,7 +36,7 @@ describe('server.ts main()', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { ProcessManager } = require('../process-manager');
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { ProcessManagerAPI } = require('../api-server');
+    const { ProcessManagerAPI } = require('../process-manager-api');
     return { ProcessManager, ProcessManagerAPI } as {
       ProcessManager: jest.Mock;
       ProcessManagerAPI: jest.Mock;

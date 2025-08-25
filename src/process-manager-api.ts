@@ -81,20 +81,20 @@ export class ProcessManagerAPI {
       let responseBody: any;
       let statusCode: number = 200;
 
-      res.status = function(code: number) {
+      res.status = ((code: number) => {
         statusCode = code;
-        return originalStatus.call(this, code);
-      };
+        return originalStatus.call(res, code);
+      }) as typeof res.status;
 
-      res.json = function(body: any) {
+      res.json = ((body: any) => {
         responseBody = body;
-        return originalJson.call(this, body);
-      };
+        return originalJson.call(res, body);
+      }) as typeof res.json;
 
-      res.send = function(body: any) {
+      res.send = ((body: any) => {
         responseBody = body;
-        return originalSend.call(this, body);
-      };
+        return originalSend.call(res, body);
+      }) as typeof res.send;
 
       // Логируем ответ после завершения
       res.on('finish', () => {
@@ -504,7 +504,7 @@ export class ProcessManagerAPI {
         this.sendError(res, 'Creating process results ZIP', error, req);
       }
     });
-
+  
     // Создание ZIP архива со всеми результатами
     this.app.post('/results/zip', async (req: Request, res: Response) => {
       try {
@@ -622,7 +622,7 @@ export class ProcessManagerAPI {
     });
 
     
-
+    
     // Принудительное завершение
     this.app.post('/shutdown', async (req: Request, res: Response) => {
       try {
@@ -709,6 +709,6 @@ export class ProcessManagerAPI {
   getApp(): express.Application {
     return this.app;
   }
-
-
 }
+
+
