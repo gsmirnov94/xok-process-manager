@@ -43,3 +43,5 @@ coverage/
 
 # TypeScript
 *.tsbuildinfo
+
+/process-results/
