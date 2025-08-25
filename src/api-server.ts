@@ -189,6 +189,26 @@ export class ProcessManagerAPI {
       }
     });
 
+    // Получение списка ID всех процессов (должно идти до роутов с :id)
+    this.app.get('/processes/ids', async (req: Request, res: Response) => {
+      try {
+        const processIds = this.processManager.getProcessIds();
+        const processesWithNames = processIds.map(id => ({
+          id,
+          name: this.processManager.getProcessName(id) || `ID:${id}`
+        }));
+        
+        res.json({
+          success: true,
+          data: processesWithNames,
+          count: processesWithNames.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        this.sendError(res, 'Getting process IDs', error, req);
+      }
+    });
+
     // Получение информации о конкретном процессе по ID
     this.app.get('/processes/:id', async (req: Request, res: Response) => {
       try {
@@ -601,25 +621,7 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Получение списка ID всех процессов
-    this.app.get('/processes/ids', async (req: Request, res: Response) => {
-      try {
-        const processIds = this.processManager.getProcessIds();
-        const processesWithNames = processIds.map(id => ({
-          id,
-          name: this.processManager.getProcessName(id) || `ID:${id}`
-        }));
-        
-        res.json({
-          success: true,
-          data: processesWithNames,
-          count: processesWithNames.length,
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        this.sendError(res, 'Getting process IDs', error, req);
-      }
-    });
+    
 
     // Принудительное завершение
     this.app.post('/shutdown', async (req: Request, res: Response) => {
