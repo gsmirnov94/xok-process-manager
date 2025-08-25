@@ -8,9 +8,6 @@ async function main() {
     
     // Создаем экземпляр ProcessManager с настройками
     const processManager = new ProcessManager({
-      maxProcesses: 20,
-      autoRestart: true,
-      logLevel: 'info',
       defaultOutputDirectory: './process-results',
       scriptsDirectory
     });
@@ -28,22 +25,23 @@ async function main() {
     console.log('POST /init                      - Initialize PM2');
     console.log('POST /processes                 - Create new process');
     console.log('GET  /processes                 - List all processes');
-    console.log('GET  /processes/:name           - Get process info');
-    console.log('POST /processes/:name/start     - Start process');
-    console.log('POST /processes/:name/stop      - Stop process');
-    console.log('POST /processes/:name/restart   - Restart process');
-    console.log('DELETE /processes/:name         - Delete process');
-    console.log('GET  /processes/:name/status    - Get process status');
+    console.log('GET  /processes/ids             - List all process IDs with names');
+    console.log('GET  /processes/:id             - Get process info by ID');
+    console.log('POST /processes/:id/start       - Start process by ID');
+    console.log('POST /processes/:id/stop        - Stop process by ID');
+    console.log('POST /processes/:id/restart     - Restart process by ID');
+    console.log('DELETE /processes/:id           - Delete process by ID');
+    console.log('GET  /processes/:id/status      - Get process status by ID');
     console.log('POST /processes/stop-all        - Stop all processes');
     console.log('POST /processes/restart-all     - Restart all processes');
-    console.log('POST /processes/:name/results   - Save result file');
-    console.log('GET  /processes/:name/results   - Get process results');
+    console.log('POST /processes/:id/results     - Save result file by process ID');
+    console.log('GET  /processes/:id/results     - Get process results by ID');
     console.log('GET  /results                   - Get all results');
     console.log('GET  /scripts                   - Get available scripts');
-    console.log('POST /processes/:name/results/zip - Create process results ZIP');
+    console.log('POST /processes/:id/results/zip - Create process results ZIP by ID');
     console.log('POST /results/zip               - Create all results ZIP');
-    console.log('DELETE /processes/:name/results/:fileName - Delete result file');
-    console.log('DELETE /processes/:name/results - Clear process results');
+    console.log('DELETE /processes/:id/results/:fileName - Delete result file by process ID');
+    console.log('DELETE /processes/:id/results   - Clear process results by ID');
     console.log('DELETE /results                 - Clear all results');
     console.log('GET  /statistics                - Get results statistics');
     console.log('POST /shutdown                  - Force shutdown');
