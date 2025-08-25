@@ -1,63 +1,24 @@
-export interface ProcessCallbacks {
-  onStart?: () => void | Promise<void>;
-  onStop?: () => void | Promise<void>;
-  onRestart?: () => void | Promise<void>;
-  onDelete?: () => void | Promise<void>;
-}
-
 export interface ProcessConfig {
-  name: string;
+  name?: string;
   script: string;
-  args?: string[];
+  args?: string | string[];
+  interpreter?: string;
   cwd?: string;
   env?: Record<string, string>;
-  instances?: number;
-  execMode?: 'fork' | 'cluster';
-  watch?: boolean;
-  ignoreWatch?: string[];
+  instances?: number | 'max';
+  watch?: boolean | string[];
+  autorestart?: boolean;
   maxMemoryRestart?: string;
-  errorFile?: string;
-  outFile?: string;
-  logFile?: string;
-  time?: boolean;
-  callbacks?: ProcessCallbacks;
-  outputDirectory?: string;
 }
 
 export interface ProcessInfo {
-  id: number;
   name: string;
-  status: string;
-  cpu: number;
-  memory: number;
-  uptime: number;
-  restarts: number;
-  pmId: number;
-}
-
-export interface ProcessManagerOptions {
-  defaultOutputDirectory?: string;
-  scriptsDirectory?: string;
-}
-
-export interface ResultFile {
-  name: string;
-  path: string;
-  size: number;
-  modified: Date;
-  processName: string;
-}
-
-export interface ProcessResults {
-  processName: string;
-  files: ResultFile[];
-  totalSize: number;
-  fileCount: number;
-}
-
-export interface ZipArchiveOptions {
-  includeProcessName?: boolean;
-  flattenStructure?: boolean;
-  compressionLevel?: number;
-  password?: string;
+  pmId: number | null;
+  pid: number | null;
+  status: string | null;
+  restartTime?: number;
+  cpu?: number;
+  memory?: number;
+  monit?: { memory?: number; cpu?: number } | undefined;
+  pm2Env?: any;
 }
