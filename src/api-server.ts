@@ -583,7 +583,7 @@ export class ProcessManagerAPI {
       }
     });
 
-    // Получение списка доступных скриптов
+    // Получение списка доступных скриптов процессов
     this.app.get('/scripts', async (req: Request, res: Response) => {
       try {
         const scripts = this.processManager.getAvailableScripts();
@@ -592,7 +592,7 @@ export class ProcessManagerAPI {
           data: {
             scripts,
             count: scripts.length,
-            directory: this.processManager.getScriptsDirectory?.() || './scripts'
+            directory: this.processManager.getScriptsDirectory?.() || './process-scripts'
           },
           timestamp: new Date().toISOString()
         });

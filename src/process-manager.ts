@@ -37,10 +37,10 @@ export class ProcessManager {
   }
 
   /**
-   * Проверяет и создает директорию для скриптов
+   * Проверяет и создает директорию для скриптов процессов
    */
   private ensureScriptsDirectory(): void {
-    const scriptsDir = this.options.scriptsDirectory || './scripts';
+    const scriptsDir = this.options.scriptsDirectory || './process-scripts';
     if (!fs.existsSync(scriptsDir)) {
       try {
         fs.mkdirSync(scriptsDir, { recursive: true });
@@ -809,11 +809,11 @@ export class ProcessManager {
   }
 
   /**
-   * Получает список доступных скриптов в директории скриптов
+   * Получает список доступных скриптов процессов в директории скриптов
    */
   getAvailableScripts(): string[] {
     try {
-      const scriptsDir = this.options.scriptsDirectory || './scripts';
+      const scriptsDir = this.options.scriptsDirectory || './process-scripts';
       if (!fs.existsSync(scriptsDir)) {
         return [];
       }
@@ -831,10 +831,10 @@ export class ProcessManager {
   }
 
   /**
-   * Получает путь к директории скриптов
+   * Получает путь к директории скриптов процессов
    */
   getScriptsDirectory(): string {
-    return this.options.scriptsDirectory || './scripts';
+    return this.options.scriptsDirectory || './process-scripts';
   }
 
   /**

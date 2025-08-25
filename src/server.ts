@@ -3,8 +3,8 @@ import { ProcessManagerAPI } from './api-server';
 
 async function main() {
   try {
-    // Получаем путь к директории скриптов из переменной окружения или используем значение по умолчанию
-    const scriptsDirectory = process.env.SCRIPTS_DIRECTORY || './scripts';
+    // Получаем путь к директории скриптов процессов из переменной окружения или используем значение по умолчанию
+    const scriptsDirectory = process.env.SCRIPTS_DIRECTORY || './process-scripts';
     
     // Создаем экземпляр ProcessManager с настройками
     const processManager = new ProcessManager({
