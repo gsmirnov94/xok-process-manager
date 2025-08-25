@@ -22,6 +22,188 @@ export class ProcessManager {
   }
 
   /**
+   * Валидирует имя процесса на предмет безопасности
+   */
+  private validateProcessName(name: string): void {
+    if (!name || typeof name !== 'string') {
+      throw new Error('Process name must be a non-empty string');
+    }
+
+    // Проверяем на path traversal
+    if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+      throw new Error('Process name contains invalid characters');
+    }
+
+    // Проверяем на null bytes и control characters
+    if (name.includes('\x00') || /[\x00-\x1F\x7F]/.test(name)) {
+      throw new Error('Process name contains invalid control characters');
+    }
+
+    // Проверяем длину
+    if (name.length > 255) {
+      throw new Error('Process name is too long');
+    }
+
+    // Проверяем на unicode control characters
+    if (/[\u0000-\u001F\u007F-\u009F]/.test(name)) {
+      throw new Error('Process name contains unicode control characters');
+    }
+  }
+
+  /**
+   * Валидирует путь к скрипту на предмет безопасности
+   */
+  private validateScriptPath(scriptPath: string): void {
+    if (!scriptPath || typeof scriptPath !== 'string') {
+      throw new Error('Script path must be a non-empty string');
+    }
+
+    // Проверяем на path traversal (..)
+    if (scriptPath.includes('..')) {
+      throw new Error('Script path contains path traversal attempt');
+    }
+
+    // Проверяем на абсолютные пути
+    if (path.isAbsolute(scriptPath)) {
+      throw new Error('Script path cannot be absolute');
+    }
+
+    // Проверяем на null bytes и control characters
+    if (scriptPath.includes('\x00') || /[\x00-\x1F\x7F]/.test(scriptPath)) {
+      throw new Error('Script path contains invalid control characters');
+    }
+
+    // Проверяем длину
+    if (scriptPath.length > 1024) {
+      throw new Error('Script path is too long');
+    }
+
+    // Проверяем на unicode control characters
+    if (/[\u0000-\u001F\u007F-\u009F]/.test(scriptPath)) {
+      throw new Error('Script path contains unicode control characters');
+    }
+  }
+
+  /**
+   * Валидирует рабочую директорию на предмет безопасности
+   */
+  private validateWorkingDirectory(cwd: string): void {
+    if (!cwd || typeof cwd !== 'string') {
+      throw new Error('Working directory must be a non-empty string');
+    }
+
+    // Проверяем на path traversal (только ..)
+    if (cwd.includes('..')) {
+      throw new Error('Working directory contains path traversal attempt');
+    }
+
+    // Проверяем на null bytes и control characters
+    if (cwd.includes('\x00') || /[\x00-\x1F\x7F]/.test(cwd)) {
+      throw new Error('Working directory contains invalid control characters');
+    }
+
+    // Проверяем длину
+    if (cwd.length > 1024) {
+      throw new Error('Working directory path is too long');
+    }
+
+    // Проверяем на unicode control characters
+    if (/[\u0000-\u001F\u007F-\u009F]/.test(cwd)) {
+      throw new Error('Working directory contains unicode control characters');
+    }
+  }
+
+  /**
+   * Валидирует выходную директорию на предмет безопасности
+   */
+  private validateOutputDirectory(outputDir: string): void {
+    if (!outputDir || typeof outputDir !== 'string') {
+      throw new Error('Output directory must be a non-empty string');
+    }
+
+    // Проверяем на path traversal (только ..)
+    if (outputDir.includes('..')) {
+      throw new Error('Output directory contains path traversal attempt');
+    }
+
+    // Проверяем на null bytes и control characters
+    if (outputDir.includes('\x00') || /[\x00-\x1F\x7F]/.test(outputDir)) {
+      throw new Error('Output directory contains invalid control characters');
+    }
+
+    // Проверяем длину
+    if (outputDir.length > 1024) {
+      throw new Error('Output directory path is too long');
+    }
+
+    // Проверяем на unicode control characters
+    if (/[\u0000-\u001F\u007F-\u009F]/.test(outputDir)) {
+      throw new Error('Output directory contains unicode control characters');
+    }
+  }
+
+  /**
+   * Валидирует переменные окружения на предмет безопасности
+   */
+  private validateEnvironmentVariables(env: Record<string, string> | undefined): void {
+    if (!env) {
+      return;
+    }
+
+    for (const [key, value] of Object.entries(env)) {
+      // Проверяем ключ на path traversal
+      if (key.includes('..') || key.includes('/') || key.includes('\\')) {
+        throw new Error('Environment variable key contains invalid characters');
+      }
+
+      // Проверяем значение на path traversal
+      if (value.includes('..') || value.includes('/') || value.includes('\\')) {
+        throw new Error('Environment variable value contains path traversal attempt');
+      }
+
+      // Проверяем на null bytes и control characters
+      if (key.includes('\x00') || /[\x00-\x1F\x7F]/.test(key) || 
+          value.includes('\x00') || /[\x00-\x1F\x7F]/.test(value)) {
+        throw new Error('Environment variable contains invalid control characters');
+      }
+
+      // Проверяем длину
+      if (key.length > 255 || value.length > 1024) {
+        throw new Error('Environment variable key or value is too long');
+      }
+    }
+  }
+
+  /**
+   * Валидирует имя файла на предмет безопасности
+   */
+  private validateFileName(fileName: string): void {
+    if (!fileName || typeof fileName !== 'string') {
+      throw new Error('File name must be a non-empty string');
+    }
+
+    // Проверяем на path traversal
+    if (fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+      throw new Error('File name contains invalid characters');
+    }
+
+    // Проверяем на null bytes и control characters
+    if (fileName.includes('\x00') || /[\x00-\x1F\x7F]/.test(fileName)) {
+      throw new Error('File name contains invalid control characters');
+    }
+
+    // Проверяем длину
+    if (fileName.length > 255) {
+      throw new Error('File name is too long');
+    }
+
+    // Проверяем на unicode control characters
+    if (/[\u0000-\u001F\u007F-\u009F]/.test(fileName)) {
+      throw new Error('File name contains unicode control characters');
+    }
+  }
+
+  /**
    * Создает директорию для результатов процессов
    */
   private ensureOutputDirectory(): void {
@@ -98,6 +280,19 @@ export class ProcessManager {
    */
   async createProcess(config: ProcessConfig): Promise<number> {
     try {
+      // Валидируем входные данные
+      this.validateProcessName(config.name);
+      this.validateScriptPath(config.script);
+      if (config.cwd) {
+        this.validateWorkingDirectory(config.cwd);
+      }
+      if (config.outputDirectory) {
+        this.validateOutputDirectory(config.outputDirectory);
+      }
+      if (config.env) {
+        this.validateEnvironmentVariables(config.env);
+      }
+
       await this.ensureConnection();
       
       return new Promise((resolve, reject) => {
@@ -489,6 +684,9 @@ export class ProcessManager {
       throw new Error(`Process with ID ${pmId} not found`);
     }
 
+    // Валидируем имя файла
+    this.validateFileName(fileName);
+
     this.ensureProcessOutputDirectory(pmId);
     const processOutputDir = this.getProcessOutputDirectory(pmId);
     const filePath = path.join(processOutputDir, fileName);
@@ -711,6 +909,9 @@ export class ProcessManager {
       throw new Error(`Process with ID ${pmId} not found`);
     }
 
+    // Валидируем имя файла на предмет безопасности
+    this.validateFileName(fileName);
+
     const processOutputDir = this.getProcessOutputDirectory(pmId);
     const filePath = path.join(processOutputDir, fileName);
 
@@ -720,9 +921,9 @@ export class ProcessManager {
 
     try {
       fs.unlinkSync(filePath);
-      console.log(`Result file deleted: ${filePath}`);
+      console.log(`Result file deleted: ${fileName}`);
     } catch (error) {
-      console.error(`Error deleting result file ${filePath}:`, error);
+      console.error(`Error deleting result file ${fileName}:`, error);
       throw error;
     }
   }
